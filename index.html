@@ -10,24 +10,24 @@
   :root{ --bg:#e6e4e2; --tile:#ffffff; --ink:#000000; --mut:#333333; --line:#e0e0e0; --teal:#7fa8a0; --accent:#1F3A4D; --red:#b5564e; }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:500;color:#000;font-variant-numeric:tabular-nums;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);padding:1cm 0.3cm}
+  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);padding:2cm 0.6cm}
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
   .top .cell{background:var(--tile);padding:14px 16px 18px}
-  .lab{font-size:16px;color:#333;font-weight:700;letter-spacing:.01em}
-  .big{font-size:74px;font-weight:800;color:#000;line-height:1;margin-top:6px}
+  .lab{font-size:16px;color:#333;font-weight:600;letter-spacing:.01em}
+  .big{font-size:48px;font-weight:700;color:#000;line-height:1;margin-top:8px;white-space:nowrap}
   .mid{flex:1;display:flex;align-items:center;justify-content:center;padding:16px 6px}
   .hero{width:100%;max-width:560px;background:var(--tile);border:8px solid #cfccc8;border-radius:120px;padding:28px 16px;text-align:center}
-  .hero .lab{font-size:18px;color:#333;font-weight:700}
-  .hero .num{font-size:90px;font-weight:800;line-height:1;margin-top:4px;color:#000}
-  .hero .num .u{font-size:26px;color:#555;margin-left:6px;font-weight:700}
+  .hero .lab{font-size:18px;color:#333;font-weight:600}
+  .hero .num{font-size:84px;font-weight:700;line-height:1;margin-top:4px;color:#000}
+  .hero .num .u{font-size:24px;color:#555;margin-left:6px;font-weight:600}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
   .grid .cell{background:var(--tile);padding:12px 16px 14px;min-height:92px}
-  .cell .val{font-size:48px;font-weight:800;margin-top:4px;color:#000}
-  .cell .val .u{font-size:18px;color:#555;margin-left:4px;font-weight:700}
+  .cell .val{font-size:44px;font-weight:700;margin-top:4px;color:#000}
+  .cell .val .u{font-size:17px;color:#555;margin-left:4px;font-weight:600}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
   .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
-  .bar button{flex:1;background:var(--tile);border:0;padding:16px 8px;font-size:16px;font-weight:700;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .bar button{flex:1;background:var(--tile);border:0;padding:16px 8px;font-size:16px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
   .bar button:active{background:#f3f1ee}
   .bar button.stop{background:var(--red);color:#fff;max-width:76px}
   .bar button.go{background:var(--teal);color:#fff}
@@ -48,7 +48,7 @@
   dialog button.ghost{background:#eee;color:#444}
   .hint{font-size:11.5px;color:var(--mut);line-height:1.5;margin-top:4px}
   #dbg{font-family:monospace;font-size:11px;color:#555;white-space:pre-wrap;word-break:break-all;background:#f6f4f1;border-radius:8px;padding:10px;margin-top:6px}
-  .pill{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(31,58,77,.9);color:#fff;font-size:11px;padding:4px 12px;border-radius:20px;display:none;z-index:5}
+  .pill{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:#d11;font-size:26px;line-height:1;display:none;z-index:5}
 </style>
 </head>
 <body>
@@ -56,7 +56,7 @@
 
   <div class="top">
     <div class="cell"><div class="lab">abgelaufene Zeit</div><div class="big" id="t-time">00:00</div></div>
-    <div class="cell"><div class="lab">Distanz (m)</div><div class="big" id="t-dist">0</div></div>
+    <div class="cell"><div class="lab">Distanz (km)</div><div class="big" id="t-dist">0,00</div></div>
   </div>
 
   <div class="mid">
@@ -139,9 +139,16 @@
     </div>
   </dialog>
 
+  <!-- Fahrt beenden -->
+  <dialog id="savedlg">
+    <div class="dh">Fahrt beenden</div>
+    <div class="db"><p style="margin:0 0 8px;color:#555;font-size:13px">Zusammenfassung dieser Fahrt:</p><div id="save-sum" style="font-size:16px;color:#111;line-height:1.5"></div></div>
+    <div class="df"><button class="ghost" id="save-no">Verwerfen</button><button class="primary" id="save-yes">Speichern</button></div>
+  </dialog>
+
 <script>
 "use strict";
-const APP_VERSION = "0.2.4";  // Design: größer/fetter/schwarz, neutraler Rahmen, Schließen-Knopf, Steigung/Kalorien getauscht
+const APP_VERSION = "0.2.5";  // Design: breiterer Rahmen, Fettung zurück, Zeit/Distanz kleiner (100:00), Distanz km 2 Nachkomma, REC = roter Punkt, Stopp -> Verwerfen/Speichern-Dialog
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -162,16 +169,16 @@ let dev=null, bikeChar=null, resRange=null;
 let running=false, paused=false, startedAt=null;
 let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
 let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
-let samples=[], tick=null, wakeLock=null;
+let samples=[], tick=null, wakeLock=null, pendingJson=null;
 let devDist0=null;
 
 // ---------- Hilfen ----------
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
-function fmtTime(s){ const h=Math.floor(s/3600),m=Math.floor(s%3600/60),se=Math.floor(s%60); return (h?h+":":"")+pad(m)+":"+pad(se); }
+function fmtTime(s){ const m=Math.floor(s/60), se=Math.floor(s%60); return pad(m)+":"+pad(se); }
 function de(n,d=0){ return (n===null||n===undefined||Number.isNaN(n))?"–":Number(n).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function setStatus(t,cls){ const e=$("status"); e.textContent=t; e.className="status"+(cls?" "+cls:""); }
-function pill(t){ const p=$("pill"); if(!t){p.style.display="none";return;} p.textContent=t; p.style.display="block"; }
+function showRec(state){ const p=$("pill"); if(!p) return; if(state==="off"){ p.style.display="none"; return; } p.textContent="●"; p.style.color=(state==="pause")?"#999":"#d11"; p.style.display="block"; }
 
 // ---------- Straßenmodell: Watt -> v ----------
 function totalMass(){ return (parseFloat(cfg.rider)||85)+(parseFloat(cfg.bike)||8); }
@@ -248,7 +255,7 @@ async function connect(){
   try{
     setStatus("Suche Bike …");
     dev = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
-    dev.addEventListener("gattserverdisconnected",()=>{ setStatus("Verbindung getrennt.","err"); pill(null); });
+    dev.addEventListener("gattserverdisconnected",()=>{ setStatus("Verbindung getrennt.","err"); showRec("off"); });
     const srv = await dev.gatt.connect();
     const fs = await srv.getPrimaryService(SVC_FTMS);
     // Widerstandsbereich lesen (optional)
@@ -270,7 +277,7 @@ async function start(){
   $("b-connect").textContent="läuft"; $("b-connect").classList.remove("go");
   requestWake();
   tick=setInterval(step,1000);
-  setStatus("Aufzeichnung läuft.","ok"); pill("● REC");
+  setStatus("Aufzeichnung läuft.","ok"); showRec("rec");
 }
 function step(){
   if(!running||paused) return;
@@ -286,25 +293,32 @@ function step(){
     dev_dist_m:last.devDist||0, road_dist_m:Math.round(roadDist), kcal:+energyKJ.toFixed(1), hr:last.hr??null});
   renderLive();
 }
-function togglePause(){ if(!running)return; paused=!paused; $("b-pause").textContent=paused?"▶ Weiter":"⏸ Pause"; pill(paused?"❚❚ Pause":"● REC"); }
-async function stop(){
+function togglePause(){ if(!running)return; paused=!paused; $("b-pause").textContent=paused?"▶ Weiter":"⏸ Pause"; showRec(paused?"pause":"rec"); }
+function stop(){
   if(!running){ setStatus("Nichts aufzuzeichnen."); return; }
-  running=false; clearInterval(tick); releaseWake(); pill(null);
-  const j = buildJson();
+  running=false; clearInterval(tick); releaseWake(); showRec("off");
+  pendingJson = buildJson();
+  const s=pendingJson.summary;
+  $("save-sum").textContent = fmtTime(s.duration_s)+" min · "+de(s.road_distance_m/1000,2)+" km · Ø "+de(s.avg_power,0)+" W · "+de(s.kcal,0)+" kcal";
+  $("savedlg").showModal();
+}
+function resetConnectBtn(){ $("b-connect").textContent="▶ Start"; $("b-connect").classList.add("go"); }
+async function saveRide(){
+  $("savedlg").close();
+  const j=pendingJson; pendingJson=null;
+  if(!j){ resetConnectBtn(); return; }
   const s=j.summary;
-  let msg="Beendet: "+fmtTime(s.duration_s)+" · "+de(s.road_distance_m/1000,2)+" km · Ø "+de(s.avg_power,0)+" W · "+de(s.kcal,0)+" kcal";
+  let msg="Gespeichert: "+fmtTime(s.duration_s)+" min · "+de(s.road_distance_m/1000,2)+" km · "+de(s.kcal,0)+" kcal";
   let cls="ok";
   if(gh&&gh.owner&&gh.repo&&gh.token){
-    setStatus(msg+" — sichere in GitHub …");
+    setStatus("sichere in GitHub …");
     const r=await commitToGithub(j);
-    if(r.ok){ msg += " — in GitHub gespeichert."; }
+    if(r.ok){ msg += " — in GitHub."; }
     else { msg += " — GitHub-Fehler: "+r.msg+" (lokal gesichert)"; cls="err"; downloadJson(j); }
-  } else {
-    downloadJson(j); msg += " — JSON heruntergeladen (GitHub nicht eingerichtet).";
-  }
-  setStatus(msg,cls);
-  $("b-connect").textContent="▶ Start"; $("b-connect").classList.add("go");
+  } else { downloadJson(j); msg += " — JSON heruntergeladen (GitHub nicht eingerichtet)."; }
+  setStatus(msg,cls); resetConnectBtn();
 }
+function discardRide(){ $("savedlg").close(); pendingJson=null; setStatus("Fahrt verworfen — nichts gespeichert."); resetConnectBtn(); }
 
 // ---------- Anzeige ----------
 function renderLive(){
@@ -428,6 +442,8 @@ $("s-save").onclick=saveSettings;
 $("s-close").onclick=()=>$("dlg").close();
 $("g-test").onclick=githubTest;
 $("g-edit-btn").onclick=showGhEdit;
+$("save-yes").onclick=saveRide;
+$("save-no").onclick=discardRide;
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 renderLive(); updateFoot();
 </script>
