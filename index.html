@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#1F3A4D">
+<link rel="manifest" href="manifest.webmanifest">
+<title>NOHrD Live</title>
+<style>
+  :root{ --bg:#e9e5e0; --tile:#ffffff; --ink:#2b2b2b; --mut:#9a9a9a; --line:#e6e6e6; --teal:#7fa8a0; --accent:#1F3A4D; --red:#b5564e; }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:300;color:var(--ink);font-variant-numeric:tabular-nums;min-height:100vh;display:flex;flex-direction:column}
+  .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
+  .top .cell{background:var(--tile);padding:18px 20px 22px}
+  .lab{font-size:13px;color:var(--mut);font-weight:300;letter-spacing:.01em}
+  .big{font-size:52px;font-weight:200;color:var(--ink);line-height:1;margin-top:10px}
+  .mid{flex:1;display:flex;align-items:center;justify-content:center;padding:26px 16px}
+  .hero{width:100%;max-width:520px;background:var(--tile);border:10px solid #dcd8d3;border-radius:120px;padding:40px 20px;text-align:center}
+  .hero .lab{font-size:15px}
+  .hero .num{font-size:76px;font-weight:200;line-height:1;margin-top:6px}
+  .hero .num .u{font-size:22px;color:#b7c4bf;margin-left:6px;font-weight:300}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
+  .grid .cell{background:var(--tile);padding:16px 20px 20px;min-height:104px}
+  .cell .val{font-size:34px;font-weight:200;margin-top:10px;color:var(--ink)}
+  .cell .val .u{font-size:15px;color:#b7c4bf;margin-left:4px}
+  .cell.cal .val{color:var(--accent)}
+  .muted .val{color:#cfccc8}
+  .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
+  .bar button{flex:1;background:var(--tile);border:0;padding:16px 8px;font-size:14px;color:var(--ink);font-family:inherit;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .bar button:active{background:#f3f1ee}
+  .bar button.stop{background:var(--red);color:#fff;max-width:76px}
+  .bar button.go{background:var(--teal);color:#fff}
+  .status{padding:10px 20px;font-size:12.5px;color:var(--mut);text-align:center;background:var(--bg);min-height:20px}
+  .status.err{color:var(--red)}
+  .status.ok{color:var(--teal)}
+  dialog{border:0;border-radius:14px;padding:0;max-width:440px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  dialog .dh{padding:18px 22px;border-bottom:1px solid var(--line);font-size:16px;color:var(--accent);letter-spacing:.02em}
+  dialog .db{padding:18px 22px;max-height:66vh;overflow:auto}
+  dialog label{display:block;font-size:12.5px;color:var(--mut);margin:14px 0 5px}
+  dialog label:first-child{margin-top:0}
+  dialog input,dialog select{width:100%;padding:9px 11px;font-size:14px;border:1px solid #ccc;border-radius:8px;font-family:inherit}
+  dialog .row{display:flex;gap:12px}
+  dialog .row>div{flex:1}
+  dialog .df{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+  dialog button{padding:9px 18px;border:0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
+  dialog button.primary{background:var(--accent);color:#fff}
+  dialog button.ghost{background:#eee;color:#444}
+  .hint{font-size:11.5px;color:var(--mut);line-height:1.5;margin-top:4px}
+  #dbg{font-family:monospace;font-size:11px;color:#555;white-space:pre-wrap;word-break:break-all;background:#f6f4f1;border-radius:8px;padding:10px;margin-top:6px}
+  .pill{position:fixed;top:8px;left:50%;transform:translateX(-50%);background:rgba(31,58,77,.9);color:#fff;font-size:11px;padding:4px 12px;border-radius:20px;display:none;z-index:5}
+</style>
+</head>
+<body>
+  <div class="pill" id="pill"></div>
+
+  <div class="top">
+    <div class="cell"><div class="lab">abgelaufene Zeit</div><div class="big" id="t-time">00:00</div></div>
+    <div class="cell"><div class="lab">Distanz (m)</div><div class="big" id="t-dist">0</div></div>
+  </div>
+
+  <div class="mid">
+    <div class="hero">
+      <div class="lab">Straßengeschwindigkeit</div>
+      <div class="num" id="t-speed">–<span class="u">km/h</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="cell muted" id="c-hr"><div class="lab">Herzfrequenz</div><div class="val" id="t-hr">–</div></div>
+    <div class="cell"><div class="lab">Leistung (W)</div><div class="val" id="t-pow">–</div></div>
+    <div class="cell"><div class="lab">Trittfrequenz</div><div class="val" id="t-cad">–<span class="u">U/min</span></div></div>
+    <div class="cell"><div class="lab">Widerstand</div><div class="val" id="t-res">–</div></div>
+    <div class="cell cal"><div class="lab">Kalorien</div><div class="val" id="t-kcal">0<span class="u">kcal</span></div></div>
+    <div class="cell"><div class="lab">Steigung (sim.)</div><div class="val" id="t-grade">0<span class="u">%</span></div></div>
+  </div>
+
+  <div class="status" id="status">Noch nicht verbunden.</div>
+
+  <div class="bar">
+    <button id="b-connect" class="go">🔗 Verbinden</button>
+    <button id="b-pause">⏸ Pause</button>
+    <button id="b-full">⛶ Vollbild</button>
+    <button id="b-settings">⚙︎</button>
+    <button id="b-stop" class="stop">■</button>
+  </div>
+
+  <!-- Einstellungen -->
+  <dialog id="dlg">
+    <div class="dh">Einstellungen – Straßenmodell</div>
+    <div class="db">
+      <div class="row">
+        <div><label>Gewicht Fahrer (kg)</label><input id="s-rider" type="number" step="0.5" value="85"></div>
+        <div><label>Rad (kg)</label><input id="s-bike" type="number" step="0.5" value="8"></div>
+      </div>
+      <label>Sitzposition (Luftwiderstand CdA)</label>
+      <select id="s-cda">
+        <option value="0.40">Aufrecht – CdA 0,40</option>
+        <option value="0.32" selected>Oberlenker – CdA 0,32</option>
+        <option value="0.28">Unterlenker – CdA 0,28</option>
+        <option value="0.24">Aero – CdA 0,24</option>
+      </select>
+      <div class="row">
+        <div><label>Rollwiderstand Crr</label><input id="s-crr" type="number" step="0.0005" value="0.004"></div>
+        <div><label>Luftdichte ρ</label><input id="s-rho" type="number" step="0.005" value="1.225"></div>
+      </div>
+      <label>Berg aus Widerstand ableiten</label>
+      <select id="s-grademode">
+        <option value="res" selected>Ja – Widerstand = Steigung</option>
+        <option value="flat">Nein – immer eben</option>
+      </select>
+      <label>Max. Steigung bei 100 % Widerstand (%)</label>
+      <input id="s-maxgrade" type="number" step="0.5" value="8">
+      <div class="row">
+        <div><label>Widerstand roh – offen (0 %)</label><input id="s-resmin" type="number" step="1" value="0"></div>
+        <div><label>Widerstand roh – zu (100 %)</label><input id="s-resmax" type="number" step="1" value="199"></div>
+      </div>
+      <div class="hint">Watt werden am Rad gemessen; daraus rechnet die Seite über das Fahrphysik-Modell die realistische Straßengeschwindigkeit. Gewicht wirkt nur hier (v. a. am Berg), nicht auf die Kalorien.</div>
+      <label style="margin-top:18px">GitHub-Speicher – Fahrten dauerhaft sichern</label>
+      <div class="row"><div><label>Owner</label><input id="g-owner" autocomplete="off" placeholder="github-name"></div><div><label>Repo</label><input id="g-repo" autocomplete="off" placeholder="nohrd-data"></div></div>
+      <div class="row"><div><label>Ordner</label><input id="g-path" value="data"></div><div><label>Branch</label><input id="g-branch" value="main"></div></div>
+      <label>Token (fine-grained PAT – Contents: write)</label>
+      <input id="g-token" type="password" autocomplete="off" placeholder="github_pat_…">
+      <div class="hint">Token bleibt nur in diesem Browser gespeichert, nie im Seitencode. Beim Stopp wird die Fahrt als JSON ins Repo committet.</div>
+      <label style="margin-top:16px">Rohdaten-Diagnose (letztes BLE-Paket)</label>
+      <div id="dbg">– noch kein Paket –</div>
+    </div>
+    <div class="df">
+      <button class="ghost" id="s-close">Schließen</button>
+      <button class="primary" id="s-save">Speichern</button>
+    </div>
+  </dialog>
+
+<script>
+"use strict";
+const APP_VERSION = "0.2.0";  // Phase 2 – PWA (Vollbild/Handy) + dauerhafte Speicherung ins GitHub-Repo
+
+// ---------- FTMS UUIDs ----------
+const SVC_FTMS   = 0x1826;
+const CH_BIKE    = 0x2AD2;   // Indoor Bike Data (notify)
+const CH_RESRANGE= 0x2AD6;   // Supported Resistance Level Range (read)
+
+// ---------- Einstellungen ----------
+const DEFAULTS = {rider:85,bike:8,cda:0.32,crr:0.004,rho:1.225,grademode:"res",maxgrade:8,resmin:0,resmax:199};
+function loadCfg(){ try{return Object.assign({},DEFAULTS,JSON.parse(localStorage.getItem("nohrd_live_cfg")||"{}"));}catch(e){return {...DEFAULTS};} }
+function saveCfg(c){ try{localStorage.setItem("nohrd_live_cfg",JSON.stringify(c));}catch(e){} }
+let cfg = loadCfg();
+function loadGh(){ try{return JSON.parse(localStorage.getItem("nohrd_gh")||"null");}catch(e){return null;} }
+function saveGh(g){ try{localStorage.setItem("nohrd_gh",JSON.stringify(g));}catch(e){} }
+let gh = loadGh();
+
+// ---------- Laufzeitzustand ----------
+let dev=null, bikeChar=null, resRange=null;
+let running=false, paused=false, startedAt=null;
+let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
+let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
+let samples=[], tick=null, wakeLock=null;
+let devDist0=null;
+
+// ---------- Hilfen ----------
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,"0");
+function fmtTime(s){ const h=Math.floor(s/3600),m=Math.floor(s%3600/60),se=Math.floor(s%60); return (h?h+":":"")+pad(m)+":"+pad(se); }
+function de(n,d=0){ return (n===null||n===undefined||Number.isNaN(n))?"–":Number(n).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function setStatus(t,cls){ const e=$("status"); e.textContent=t; e.className="status"+(cls?" "+cls:""); }
+function pill(t){ const p=$("pill"); if(!t){p.style.display="none";return;} p.textContent=t; p.style.display="block"; }
+
+// ---------- Straßenmodell: Watt -> v ----------
+function totalMass(){ return (parseFloat(cfg.rider)||85)+(parseFloat(cfg.bike)||8); }
+function gradeFraction(){
+  if(cfg.grademode!=="res" || last.resPct===null) return 0;
+  return (last.resPct/100)*((parseFloat(cfg.maxgrade)||0)/100);
+}
+function roadSpeedMps(P){
+  if(!P||P<=0) return 0;
+  const g=9.81, m=totalMass(), eta=0.97;
+  const grade=gradeFraction(), theta=Math.atan(grade);
+  const crr=parseFloat(cfg.crr)||0.004, rho=parseFloat(cfg.rho)||1.225, cda=parseFloat(cfg.cda)||0.32;
+  const Fconst = crr*m*g*Math.cos(theta) + m*g*Math.sin(theta);  // N (rollen + schwerkraft)
+  const k = 0.5*rho*cda;                                          // N/(m/s)^2
+  const Pw = P*eta;
+  // loese  k*v^3 + Fconst*v - Pw = 0  per Bisektion (monoton steigend fuer v>=0)
+  let lo=0, hi=40;
+  for(let i=0;i<60;i++){ const v=(lo+hi)/2; if(k*v*v*v+Fconst*v-Pw>0){ hi=v; } else { lo=v; } }
+  return (lo+hi)/2;
+}
+
+// ---------- BLE: Indoor Bike Data parsen ----------
+function parseBike(dv){
+  const flags = dv.getUint16(0,true);
+  let o=2; const out={};
+  const u16=()=>{const v=dv.getUint16(o,true);o+=2;return v;};
+  const s16=()=>{const v=dv.getInt16(o,true);o+=2;return v;};
+  const u8 =()=>{const v=dv.getUint8(o);o+=1;return v;};
+  const u24=()=>{const v=dv.getUint8(o)|(dv.getUint8(o+1)<<8)|(dv.getUint8(o+2)<<16);o+=3;return v;};
+  if(!(flags&0x0001)) out.speedKmh = u16()*0.01;      // bit0=0 -> Instantaneous Speed vorhanden
+  if(flags&0x0002) out.avgSpeed = u16()*0.01;
+  if(flags&0x0004) out.cadence = u16()*0.5;           // 0.5 /min
+  if(flags&0x0008) out.avgCad = u16()*0.5;
+  if(flags&0x0010) out.distance = u24();              // m
+  if(flags&0x0020) out.resRaw = s16();                // Resistance Level
+  if(flags&0x0040) out.power = s16();                 // W
+  if(flags&0x0080) out.avgPower = s16();
+  if(flags&0x0100){ out.energy=u16(); out.energyHr=u16(); out.energyMin=u8(); }
+  if(flags&0x0200) out.hr = u8();
+  if(flags&0x0400) out.met = u8()*0.1;
+  if(flags&0x0800) out.elapsed = u16();
+  if(flags&0x1000) out.remain = u16();
+  out._flags=flags; out._len=dv.byteLength;
+  return out;
+}
+function resToPct(raw){
+  if(raw===null||raw===undefined) return null;
+  const lo=parseFloat(cfg.resmin)||0, hi=parseFloat(cfg.resmax)||199;   // echte Knopfspanne, nicht der (riesige) gemeldete Bereich
+  if(hi<=lo) return raw;
+  return Math.max(0,Math.min(100,(raw-lo)/(hi-lo)*100));
+}
+
+function onBike(ev){
+  const dv = ev.target.value;
+  const b = parseBike(dv);
+  if(b.speedKmh!==undefined) last.speedKmh=b.speedKmh;
+  if(b.cadence!==undefined) last.cadence=b.cadence;
+  if(b.power!==undefined) last.power=b.power;
+  if(b.hr!==undefined) last.hr=b.hr;
+  if(b.resRaw!==undefined){ last.resRaw=b.resRaw; last.resPct=resToPct(b.resRaw); }
+  if(b.distance!==undefined){ if(devDist0===null) devDist0=b.distance; last.devDist=b.distance-devDist0; }
+  // Diagnose
+  const hex=[...new Uint8Array(dv.buffer)].map(x=>x.toString(16).padStart(2,"0")).join(" ");
+  $("dbg").textContent =
+    "flags 0x"+b._flags.toString(16).padStart(4,"0")+"  ("+b._len+" B)\n"+hex+"\n"+
+    "v="+ (last.speedKmh??"–") +" km/h  cad="+(last.cadence??"–")+"  P="+(last.power??"–")+" W  "+
+    "res="+(last.resRaw??"–")+" ("+(last.resPct!==null?de(last.resPct,0)+"%":"–")+")  dist="+(last.devDist||0)+" m";
+  if(!running){ renderLive(); }  // schon vor Start Werte zeigen
+}
+
+// ---------- Verbinden ----------
+async function connect(){
+  if(!navigator.bluetooth){ setStatus("Dieser Browser kann kein Web-Bluetooth (nur Chrome auf Android/Windows).","err"); return; }
+  try{
+    setStatus("Suche Bike …");
+    dev = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
+    dev.addEventListener("gattserverdisconnected",()=>{ setStatus("Verbindung getrennt.","err"); pill(null); });
+    const srv = await dev.gatt.connect();
+    const fs = await srv.getPrimaryService(SVC_FTMS);
+    // Widerstandsbereich lesen (optional)
+    try{ const rc=await fs.getCharacteristic(CH_RESRANGE); const rv=await rc.readValue();
+      resRange={min:rv.getInt16(0,true),max:rv.getInt16(2,true),inc:rv.getUint16(4,true)}; }catch(e){ resRange=null; }
+    bikeChar = await fs.getCharacteristic(CH_BIKE);
+    await bikeChar.startNotifications();
+    bikeChar.addEventListener("characteristicvaluechanged",onBike);
+    setStatus("Verbunden mit "+(dev.name||"Bike")+" — tritt los, dann ▶ Start.","ok");
+    $("b-connect").textContent="▶ Start"; $("b-connect").onclick=start;
+  }catch(e){ setStatus("Verbindung abgebrochen: "+e.message,"err"); }
+}
+
+// ---------- Start / Pause / Stop ----------
+async function start(){
+  if(!bikeChar){ return connect(); }
+  running=true; paused=false; startedAt=new Date();
+  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null;
+  $("b-connect").textContent="läuft"; $("b-connect").classList.remove("go");
+  requestWake();
+  tick=setInterval(step,1000);
+  setStatus("Aufzeichnung läuft.","ok"); pill("● REC");
+}
+function step(){
+  if(!running||paused) return;
+  elapsed+=1;
+  const P = last.power||0;
+  energyKJ += P/1000;                 // kJ ≈ kcal
+  const vmps = roadSpeedMps(P);
+  roadDist += vmps;                    // m (1 s)
+  last.roadKmh = vmps*3.6;
+  samples.push({t:elapsed, road_kmh:+(vmps*3.6).toFixed(2), dev_kmh:last.speedKmh??null,
+    cad:last.cadence??null, pow:last.power??null, res_pct:last.resPct!==null?+last.resPct.toFixed(0):null,
+    res_raw:last.resRaw??null, grade_pct:+(gradeFraction()*100).toFixed(1),
+    dev_dist_m:last.devDist||0, road_dist_m:Math.round(roadDist), kcal:+energyKJ.toFixed(1), hr:last.hr??null});
+  renderLive();
+}
+function togglePause(){ if(!running)return; paused=!paused; $("b-pause").textContent=paused?"▶ Weiter":"⏸ Pause"; pill(paused?"❚❚ Pause":"● REC"); }
+async function stop(){
+  if(!running){ setStatus("Nichts aufzuzeichnen."); return; }
+  running=false; clearInterval(tick); releaseWake(); pill(null);
+  const j = buildJson();
+  const s=j.summary;
+  let msg="Beendet: "+fmtTime(s.duration_s)+" · "+de(s.road_distance_m/1000,2)+" km · Ø "+de(s.avg_power,0)+" W · "+de(s.kcal,0)+" kcal";
+  let cls="ok";
+  if(gh&&gh.owner&&gh.repo&&gh.token){
+    setStatus(msg+" — sichere in GitHub …");
+    const r=await commitToGithub(j);
+    if(r.ok){ msg += " — in GitHub gespeichert."; }
+    else { msg += " — GitHub-Fehler: "+r.msg+" (lokal gesichert)"; cls="err"; downloadJson(j); }
+  } else {
+    downloadJson(j); msg += " — JSON heruntergeladen (GitHub nicht eingerichtet).";
+  }
+  setStatus(msg,cls);
+  $("b-connect").textContent="▶ Start"; $("b-connect").classList.add("go");
+}
+
+// ---------- Anzeige ----------
+function renderLive(){
+  $("t-time").textContent = fmtTime(elapsed);
+  $("t-dist").textContent = de(Math.round(roadDist),0);
+  const rk = running ? (last.roadKmh??0) : roadSpeedMps(last.power||0)*3.6;
+  $("t-speed").innerHTML = (last.power!==null?de(rk,1):"–")+'<span class="u">km/h</span>';
+  $("t-pow").textContent = last.power!==null?de(last.power,0):"–";
+  $("t-cad").innerHTML = (last.cadence!==null?de(last.cadence,0):"–")+'<span class="u">U/min</span>';
+  $("t-res").innerHTML = last.resPct!==null?de(last.resPct,0)+'<span class="u">%</span>':(last.resRaw!==null?de(last.resRaw,0):"–");
+  $("t-kcal").innerHTML = de(energyKJ,0)+'<span class="u">kcal</span>';
+  $("t-grade").innerHTML = de(gradeFraction()*100,1)+'<span class="u">%</span>';
+  $("t-hr").textContent = last.hr!==null?de(last.hr,0):"–";
+}
+
+// ---------- JSON ----------
+function arrStat(key,fn){ const a=samples.map(s=>s[key]).filter(v=>v!==null&&v!==undefined); if(!a.length)return null; return fn(a); }
+function buildJson(){
+  const avg=a=>a.reduce((s,x)=>s+x,0)/a.length, mx=a=>Math.max(...a);
+  const summary={
+    duration_s:elapsed,
+    device_distance_m:last.devDist||0,
+    road_distance_m:Math.round(roadDist),
+    kcal:+energyKJ.toFixed(1),
+    avg_power:arrStat("pow",avg), max_power:arrStat("pow",mx),
+    avg_cadence:arrStat("cad",avg), max_cadence:arrStat("cad",mx),
+    avg_resistance_pct:arrStat("res_pct",avg), max_resistance_pct:arrStat("res_pct",mx),
+    avg_road_kmh:arrStat("road_kmh",avg), max_road_kmh:arrStat("road_kmh",mx),
+    avg_device_kmh:arrStat("dev_kmh",avg), max_device_kmh:arrStat("dev_kmh",mx)
+  };
+  return { exported_by:"nohrd-live", version:APP_VERSION,
+    started_iso: startedAt? startedAt.toISOString():null, ended_iso:new Date().toISOString(),
+    model:{ rider_kg:+cfg.rider, bike_kg:+cfg.bike, cda:+cfg.cda, crr:+cfg.crr, rho:+cfg.rho,
+            grade_mode:cfg.grademode, max_grade_pct:+cfg.maxgrade, efficiency:0.97, kcal_method:"power-integral (1kJ≈1kcal)" },
+    resistance_range: resRange, summary, samples };
+}
+function fnameFrom(d){ d=d||new Date(); const p=x=>String(x).padStart(2,"0");
+  return `${d.getFullYear()} ${p(d.getMonth()+1)} ${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())} Training.json`; }
+function downloadJson(obj){
+  const blob=new Blob([JSON.stringify(obj,null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=fnameFrom(startedAt);
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+async function commitToGithub(obj){
+  try{
+    const name=fnameFrom(startedAt);
+    const rel=(gh.path?gh.path.replace(/^\/+|\/+$/g,"")+"/":"")+name;
+    const url="https://api.github.com/repos/"+gh.owner+"/"+gh.repo+"/contents/"+rel.split("/").map(encodeURIComponent).join("/");
+    const b64=btoa(unescape(encodeURIComponent(JSON.stringify(obj,null,1))));
+    const r=await fetch(url,{ method:"PUT",
+      headers:{ "Authorization":"Bearer "+gh.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json" },
+      body:JSON.stringify({ message:"Training "+name, content:b64, branch:(gh.branch||"main") }) });
+    if(r.ok) return {ok:true};
+    let t=""; try{ t=(await r.json()).message||""; }catch(e){}
+    return {ok:false,msg:"HTTP "+r.status+(t?" "+t:"")};
+  }catch(e){ return {ok:false,msg:e.message}; }
+}
+
+// ---------- Wake Lock / Vollbild ----------
+async function requestWake(){ try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }catch(e){} }
+function releaseWake(){ try{ wakeLock&&wakeLock.release(); wakeLock=null; }catch(e){} }
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&running&&!wakeLock) requestWake(); });
+function toggleFull(){ const d=document.documentElement; if(!document.fullscreenElement){ (d.requestFullscreen||d.webkitRequestFullscreen).call(d); } else { document.exitFullscreen&&document.exitFullscreen(); } }
+
+// ---------- Settings-Dialog ----------
+function openSettings(){
+  $("s-rider").value=cfg.rider; $("s-bike").value=cfg.bike; $("s-cda").value=cfg.cda;
+  $("s-crr").value=cfg.crr; $("s-rho").value=cfg.rho; $("s-grademode").value=cfg.grademode; $("s-maxgrade").value=cfg.maxgrade;
+  $("s-resmin").value=cfg.resmin; $("s-resmax").value=cfg.resmax;
+  const G=gh||{}; $("g-owner").value=G.owner||""; $("g-repo").value=G.repo||""; $("g-path").value=G.path||"data"; $("g-branch").value=G.branch||"main"; $("g-token").value=G.token||"";
+  $("dlg").showModal();
+}
+function saveSettings(){
+  cfg={ rider:+$("s-rider").value, bike:+$("s-bike").value, cda:+$("s-cda").value, crr:+$("s-crr").value,
+        rho:+$("s-rho").value, grademode:$("s-grademode").value, maxgrade:+$("s-maxgrade").value,
+        resmin:+$("s-resmin").value, resmax:+$("s-resmax").value };
+  saveCfg(cfg);
+  gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
+  saveGh(gh);
+  $("dlg").close(); renderLive();
+}
+
+// ---------- Verdrahtung ----------
+$("b-connect").onclick=connect;
+$("b-pause").onclick=togglePause;
+$("b-full").onclick=toggleFull;
+$("b-stop").onclick=stop;
+$("b-settings").onclick=openSettings;
+$("s-save").onclick=saveSettings;
+$("s-close").onclick=()=>$("dlg").close();
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+renderLive();
+</script>
+</body>
+</html>
