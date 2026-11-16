@@ -118,7 +118,7 @@
       </div>
       <div class="hint">Watt werden am Rad gemessen; daraus rechnet die Seite über das Fahrphysik-Modell die realistische Straßengeschwindigkeit. Gewicht wirkt nur hier (v. a. am Berg), nicht auf die Kalorien.</div>
       <label style="margin-top:18px">GitHub-Speicher – Fahrten dauerhaft sichern</label>
-      <div class="row"><div><label>Owner</label><input id="g-owner" autocomplete="off" placeholder="github-name"></div><div><label>Repo</label><input id="g-repo" autocomplete="off" placeholder="nohrd-data"></div></div>
+      <div class="row"><div><label>Owner</label><input id="g-owner" autocomplete="off" placeholder="z. B. MarieeTobb"></div><div><label>Repo</label><input id="g-repo" autocomplete="off" placeholder="z. B. nohrd-data"></div></div>
       <div class="row"><div><label>Ordner</label><input id="g-path" value="data"></div><div><label>Branch</label><input id="g-branch" value="main"></div></div>
       <label>Token (fine-grained PAT – Contents: write)</label>
       <input id="g-token" type="password" autocomplete="off" placeholder="github_pat_…">
@@ -135,7 +135,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.1";  // Phase 2 – PWA + GitHub; Diagnose: Versionsanzeige, GitHub-Status, Test-Knopf; SW network-first
+const APP_VERSION = "0.2.2";  // Phase 2 – Owner/Repo vorausgefüllt (kein irreführender Platzhalter mehr), nur noch Token eintragen
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -392,7 +392,7 @@ function openSettings(){
   $("s-rider").value=cfg.rider; $("s-bike").value=cfg.bike; $("s-cda").value=cfg.cda;
   $("s-crr").value=cfg.crr; $("s-rho").value=cfg.rho; $("s-grademode").value=cfg.grademode; $("s-maxgrade").value=cfg.maxgrade;
   $("s-resmin").value=cfg.resmin; $("s-resmax").value=cfg.resmax;
-  const G=gh||{}; $("g-owner").value=G.owner||""; $("g-repo").value=G.repo||""; $("g-path").value=G.path||"data"; $("g-branch").value=G.branch||"main"; $("g-token").value=G.token||"";
+  const G=gh||{}; $("g-owner").value=G.owner||"MarieeTobb"; $("g-repo").value=G.repo||"nohrd-data"; $("g-path").value=G.path||"data"; $("g-branch").value=G.branch||"main"; $("g-token").value=G.token||"";
   $("dlg").showModal();
 }
 function saveSettings(){
