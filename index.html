@@ -118,12 +118,18 @@
       </div>
       <div class="hint">Watt werden am Rad gemessen; daraus rechnet die Seite über das Fahrphysik-Modell die realistische Straßengeschwindigkeit. Gewicht wirkt nur hier (v. a. am Berg), nicht auf die Kalorien.</div>
       <label style="margin-top:18px">GitHub-Speicher – Fahrten dauerhaft sichern</label>
-      <div class="row"><div><label>Owner</label><input id="g-owner" autocomplete="off" placeholder="z. B. MarieeTobb"></div><div><label>Repo</label><input id="g-repo" autocomplete="off" placeholder="z. B. nohrd-data"></div></div>
-      <div class="row"><div><label>Ordner</label><input id="g-path" value="data"></div><div><label>Branch</label><input id="g-branch" value="main"></div></div>
-      <label>Token (fine-grained PAT – Contents: write)</label>
-      <input id="g-token" type="password" autocomplete="off" placeholder="github_pat_…">
-      <div style="display:flex;gap:10px;align-items:center;margin-top:8px"><button type="button" id="g-test" class="ghost">GitHub testen</button><span id="g-status" class="hint" style="margin-top:0"></span></div>
-      <div class="hint">Token bleibt nur in diesem Browser gespeichert, nie im Seitencode. Beim Stopp wird die Fahrt als JSON ins Repo committet.</div>
+      <div id="gh-summary" style="display:none">
+        <div class="hint" id="gh-sum-text" style="margin-top:2px"></div>
+        <button type="button" id="g-edit-btn" class="ghost" style="margin-top:10px">Zugang ändern</button>
+      </div>
+      <div id="gh-edit">
+        <div class="row"><div><label>Owner</label><input id="g-owner" autocomplete="off" placeholder="z. B. MarieeTobb"></div><div><label>Repo</label><input id="g-repo" autocomplete="off" placeholder="z. B. nohrd-data"></div></div>
+        <div class="row"><div><label>Ordner</label><input id="g-path" value="data"></div><div><label>Branch</label><input id="g-branch" value="main"></div></div>
+        <label>Token (fine-grained PAT – Contents: write)</label>
+        <input id="g-token" type="password" autocomplete="off" placeholder="github_pat_…">
+        <div style="display:flex;gap:10px;align-items:center;margin-top:8px"><button type="button" id="g-test" class="ghost">GitHub testen</button><span id="g-status" class="hint" style="margin-top:0"></span></div>
+        <div class="hint">Token bleibt nur in diesem Browser gespeichert, nie im Seitencode. Nach dem Speichern wird dieser Bereich ausgeblendet, damit du ihn bei Gewichtsänderungen nicht versehentlich veränderst.</div>
+      </div>
       <label style="margin-top:16px">Rohdaten-Diagnose (letztes BLE-Paket)</label>
       <div id="dbg">– noch kein Paket –</div>
     </div>
@@ -135,7 +141,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.2";  // Phase 2 – Owner/Repo vorausgefüllt (kein irreführender Platzhalter mehr), nur noch Token eintragen
+const APP_VERSION = "0.2.3";  // Phase 2 – GitHub-Zugang nach dem Speichern ausgeblendet (Token vor versehentlicher Änderung geschützt)
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -357,6 +363,9 @@ async function commitToGithub(obj){
   }catch(e){ return {ok:false,msg:e.message}; }
 }
 function updateFoot(){ const f=$("foot"); if(!f) return; const ok=gh&&gh.owner&&gh.repo&&gh.token; f.textContent="v"+APP_VERSION+" · GitHub: "+(ok?("✓ "+gh.owner+"/"+gh.repo):"– nicht eingerichtet"); }
+function ghConfigured(){ return !!(gh&&gh.owner&&gh.repo&&gh.token); }
+function showGhSummary(){ $("gh-summary").style.display="block"; $("gh-edit").style.display="none"; $("gh-sum-text").textContent="✓ Gespeichert: "+gh.owner+"/"+gh.repo+" · Token hinterlegt (Länge "+gh.token.length+"). Zum Schutz ausgeblendet."; }
+function showGhEdit(){ $("gh-summary").style.display="none"; $("gh-edit").style.display="block"; const G=gh||{}; $("g-owner").value=G.owner||"MarieeTobb"; $("g-repo").value=G.repo||"nohrd-data"; $("g-path").value=G.path||"data"; $("g-branch").value=G.branch||"main"; $("g-token").value=G.token||""; if($("g-status")) $("g-status").textContent=""; }
 async function githubTest(){
   const st=$("g-status");
   gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
@@ -392,7 +401,7 @@ function openSettings(){
   $("s-rider").value=cfg.rider; $("s-bike").value=cfg.bike; $("s-cda").value=cfg.cda;
   $("s-crr").value=cfg.crr; $("s-rho").value=cfg.rho; $("s-grademode").value=cfg.grademode; $("s-maxgrade").value=cfg.maxgrade;
   $("s-resmin").value=cfg.resmin; $("s-resmax").value=cfg.resmax;
-  const G=gh||{}; $("g-owner").value=G.owner||"MarieeTobb"; $("g-repo").value=G.repo||"nohrd-data"; $("g-path").value=G.path||"data"; $("g-branch").value=G.branch||"main"; $("g-token").value=G.token||"";
+  if(ghConfigured()){ showGhSummary(); } else { showGhEdit(); }
   $("dlg").showModal();
 }
 function saveSettings(){
@@ -400,8 +409,11 @@ function saveSettings(){
         rho:+$("s-rho").value, grademode:$("s-grademode").value, maxgrade:+$("s-maxgrade").value,
         resmin:+$("s-resmin").value, resmax:+$("s-resmax").value };
   saveCfg(cfg);
-  gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
-  saveGh(gh); updateFoot();
+  if($("gh-edit").style.display!=="none"){   // Zugangsdaten nur übernehmen, wenn der Bereich sichtbar ist
+    gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
+    saveGh(gh);
+  }
+  updateFoot();
   setStatus("Einstellungen gespeichert · GitHub: "+((gh.owner&&gh.repo&&gh.token)?("✓ "+gh.owner+"/"+gh.repo):"unvollständig"),"ok");
   $("dlg").close(); renderLive();
 }
@@ -415,6 +427,7 @@ $("b-settings").onclick=openSettings;
 $("s-save").onclick=saveSettings;
 $("s-close").onclick=()=>$("dlg").close();
 $("g-test").onclick=githubTest;
+$("g-edit-btn").onclick=showGhEdit;
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 renderLive(); updateFoot();
 </script>
