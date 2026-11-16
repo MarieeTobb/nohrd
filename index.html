@@ -7,27 +7,27 @@
 <link rel="manifest" href="manifest.webmanifest">
 <title>NOHrD Live</title>
 <style>
-  :root{ --bg:#e9e5e0; --tile:#ffffff; --ink:#2b2b2b; --mut:#9a9a9a; --line:#e6e6e6; --teal:#7fa8a0; --accent:#1F3A4D; --red:#b5564e; }
+  :root{ --bg:#e6e4e2; --tile:#ffffff; --ink:#000000; --mut:#333333; --line:#e0e0e0; --teal:#7fa8a0; --accent:#1F3A4D; --red:#b5564e; }
   *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:300;color:var(--ink);font-variant-numeric:tabular-nums;min-height:100vh;display:flex;flex-direction:column}
+  html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:500;color:#000;font-variant-numeric:tabular-nums;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);padding:1cm 0.3cm}
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .top .cell{background:var(--tile);padding:18px 20px 22px}
-  .lab{font-size:13px;color:var(--mut);font-weight:300;letter-spacing:.01em}
-  .big{font-size:52px;font-weight:200;color:var(--ink);line-height:1;margin-top:10px}
-  .mid{flex:1;display:flex;align-items:center;justify-content:center;padding:26px 16px}
-  .hero{width:100%;max-width:520px;background:var(--tile);border:10px solid #dcd8d3;border-radius:120px;padding:40px 20px;text-align:center}
-  .hero .lab{font-size:15px}
-  .hero .num{font-size:76px;font-weight:200;line-height:1;margin-top:6px}
-  .hero .num .u{font-size:22px;color:#b7c4bf;margin-left:6px;font-weight:300}
+  .top .cell{background:var(--tile);padding:14px 16px 18px}
+  .lab{font-size:16px;color:#333;font-weight:700;letter-spacing:.01em}
+  .big{font-size:74px;font-weight:800;color:#000;line-height:1;margin-top:6px}
+  .mid{flex:1;display:flex;align-items:center;justify-content:center;padding:16px 6px}
+  .hero{width:100%;max-width:560px;background:var(--tile);border:8px solid #cfccc8;border-radius:120px;padding:28px 16px;text-align:center}
+  .hero .lab{font-size:18px;color:#333;font-weight:700}
+  .hero .num{font-size:90px;font-weight:800;line-height:1;margin-top:4px;color:#000}
+  .hero .num .u{font-size:26px;color:#555;margin-left:6px;font-weight:700}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:16px 20px 20px;min-height:104px}
-  .cell .val{font-size:34px;font-weight:200;margin-top:10px;color:var(--ink)}
-  .cell .val .u{font-size:15px;color:#b7c4bf;margin-left:4px}
-  .cell.cal .val{color:var(--accent)}
-  .muted .val{color:#cfccc8}
+  .grid .cell{background:var(--tile);padding:12px 16px 14px;min-height:92px}
+  .cell .val{font-size:48px;font-weight:800;margin-top:4px;color:#000}
+  .cell .val .u{font-size:18px;color:#555;margin-left:4px;font-weight:700}
+  .cell.cal .val{color:#000}
+  .muted .val{color:#c9c9c9}
   .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
-  .bar button{flex:1;background:var(--tile);border:0;padding:16px 8px;font-size:14px;color:var(--ink);font-family:inherit;letter-spacing:.04em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .bar button{flex:1;background:var(--tile);border:0;padding:16px 8px;font-size:16px;font-weight:700;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
   .bar button:active{background:#f3f1ee}
   .bar button.stop{background:var(--red);color:#fff;max-width:76px}
   .bar button.go{background:var(--teal);color:#fff}
@@ -71,8 +71,8 @@
     <div class="cell"><div class="lab">Leistung (W)</div><div class="val" id="t-pow">–</div></div>
     <div class="cell"><div class="lab">Trittfrequenz</div><div class="val" id="t-cad">–<span class="u">U/min</span></div></div>
     <div class="cell"><div class="lab">Widerstand</div><div class="val" id="t-res">–</div></div>
-    <div class="cell cal"><div class="lab">Kalorien</div><div class="val" id="t-kcal">0<span class="u">kcal</span></div></div>
     <div class="cell"><div class="lab">Steigung (sim.)</div><div class="val" id="t-grade">0<span class="u">%</span></div></div>
+    <div class="cell cal"><div class="lab">Kalorien</div><div class="val" id="t-kcal">0<span class="u">kcal</span></div></div>
   </div>
 
   <div class="status" id="status">Noch nicht verbunden.</div>
@@ -81,7 +81,7 @@
   <div class="bar">
     <button id="b-connect" class="go">🔗 Verbinden</button>
     <button id="b-pause">⏸ Pause</button>
-    <button id="b-full">⛶ Vollbild</button>
+    <button id="b-close">✕ Schließen</button>
     <button id="b-settings">⚙︎</button>
     <button id="b-stop" class="stop">■</button>
   </div>
@@ -141,7 +141,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.3";  // Phase 2 – GitHub-Zugang nach dem Speichern ausgeblendet (Token vor versehentlicher Änderung geschützt)
+const APP_VERSION = "0.2.4";  // Design: größer/fetter/schwarz, neutraler Rahmen, Schließen-Knopf, Steigung/Kalorien getauscht
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -421,7 +421,7 @@ function saveSettings(){
 // ---------- Verdrahtung ----------
 $("b-connect").onclick=connect;
 $("b-pause").onclick=togglePause;
-$("b-full").onclick=toggleFull;
+$("b-close").onclick=()=>{ try{ window.close(); }catch(e){} };
 $("b-stop").onclick=stop;
 $("b-settings").onclick=openSettings;
 $("s-save").onclick=saveSettings;
