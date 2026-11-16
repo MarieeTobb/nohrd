@@ -10,19 +10,19 @@
   :root{ --bg:#e6e4e2; --tile:#ffffff; --ink:#000000; --mut:#333333; --line:#e0e0e0; --teal:#7fa8a0; --accent:#1F3A4D; --red:#b5564e; }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);padding:2cm 0.6cm}
+  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);padding:1.3cm 0.6cm}
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .top .cell{background:var(--tile);padding:14px 16px 18px}
+  .top .cell{background:var(--tile);padding:10px 16px 12px}
   .lab{font-size:16px;color:#333;font-weight:600;letter-spacing:.01em}
-  .big{font-size:48px;font-weight:700;color:#000;line-height:1;margin-top:8px;white-space:nowrap}
-  .mid{flex:1;display:flex;align-items:center;justify-content:center;padding:16px 6px}
-  .hero{width:100%;max-width:560px;background:var(--tile);border:8px solid #cfccc8;border-radius:120px;padding:28px 16px;text-align:center}
+  .big{font-size:44px;font-weight:700;color:#000;line-height:1;margin-top:4px;white-space:nowrap}
+  .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 6px}
+  .hero{width:100%;max-width:560px;background:var(--tile);border:6px solid #cfccc8;border-radius:120px;padding:12px 16px;text-align:center}
   .hero .lab{font-size:18px;color:#333;font-weight:600}
-  .hero .num{font-size:84px;font-weight:700;line-height:1;margin-top:4px;color:#000}
-  .hero .num .u{font-size:24px;color:#555;margin-left:6px;font-weight:600}
+  .hero .num{font-size:68px;font-weight:700;line-height:1;margin-top:2px;color:#000}
+  .hero .num .u{font-size:22px;color:#555;margin-left:6px;font-weight:600}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:12px 16px 14px;min-height:92px}
-  .cell .val{font-size:44px;font-weight:700;margin-top:4px;color:#000}
+  .grid .cell{background:var(--tile);padding:9px 16px 10px;min-height:54px}
+  .cell .val{font-size:40px;font-weight:700;margin-top:2px;color:#000}
   .cell .val .u{font-size:17px;color:#555;margin-left:4px;font-weight:600}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
@@ -46,6 +46,14 @@
   dialog button{padding:9px 18px;border:0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
   dialog button.primary{background:var(--accent);color:#fff}
   dialog button.ghost{background:#eee;color:#444}
+  #savedlg{width:440px;max-width:94%;border-radius:18px}
+  #savedlg .dh{font-size:21px;padding:22px 26px}
+  #savedlg .db{padding:22px 26px 6px}
+  #savedlg #save-sum{font-size:19px;color:#111;line-height:1.5}
+  #savedlg .df2{display:flex;flex-direction:column;gap:26px;padding:22px 26px 28px}
+  #savedlg .bigbtn{padding:24px;font-size:22px;font-weight:700;border:0;border-radius:16px;font-family:inherit;cursor:pointer}
+  #savedlg .bigbtn.save{background:#2f8a7a;color:#fff}
+  #savedlg .bigbtn.discard{background:#f0e3e1;color:#b5564e}
   .hint{font-size:11.5px;color:var(--mut);line-height:1.5;margin-top:4px}
   #dbg{font-family:monospace;font-size:11px;color:#555;white-space:pre-wrap;word-break:break-all;background:#f6f4f1;border-radius:8px;padding:10px;margin-top:6px}
   .pill{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:#d11;font-size:26px;line-height:1;display:none;z-index:5}
@@ -143,12 +151,15 @@
   <dialog id="savedlg">
     <div class="dh">Fahrt beenden</div>
     <div class="db"><p style="margin:0 0 8px;color:#555;font-size:13px">Zusammenfassung dieser Fahrt:</p><div id="save-sum" style="font-size:16px;color:#111;line-height:1.5"></div></div>
-    <div class="df"><button class="ghost" id="save-no">Verwerfen</button><button class="primary" id="save-yes">Speichern</button></div>
+    <div class="df2">
+      <button class="bigbtn save" id="save-yes">✓ Speichern</button>
+      <button class="bigbtn discard" id="save-no">✕ Verwerfen</button>
+    </div>
   </dialog>
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.6";  // Anzeige geglättet (EMA) für Watt/Straßentempo/Widerstand; Rohdaten bleiben ungeglättet; Distanz-Anzeige in km korrigiert
+const APP_VERSION = "0.2.7";  // Leistung extra geglättet, Schnellverbinden (getDevices), großer Stopp-Dialog, Layout passt auf eine Bildschirmhöhe
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -170,9 +181,10 @@ let running=false, paused=false, startedAt=null;
 let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
 let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
 let samples=[], tick=null, wakeLock=null, pendingJson=null;
-let emaW=null, emaRes=null;                 // geglättete Anzeigewerte
-const SMOOTH=0.4;                            // Glättungsstärke (1 = aus, kleiner = ruhiger); 0.4 ≈ ruhig ohne spürbaren Lag bei 1 Hz
-const ema=(p,v)=> (p==null?v:(SMOOTH*v+(1-SMOOTH)*p));
+let emaW=null, emaRes=null, emaWpow=null;   // geglättete Anzeigewerte
+const SMOOTH=0.4;                            // Straßentempo/Widerstand (ruhig, kaum Lag)
+const SMOOTH_POW=0.25;                       // Leistung extra ruhig (schwankt sonst zu stark)
+const ema=(p,v,a)=> (p==null?v:(a*v+(1-a)*p));
 let devDist0=null;
 
 // ---------- Hilfen ----------
@@ -256,27 +268,39 @@ function onBike(ev){
 async function connect(){
   if(!navigator.bluetooth){ setStatus("Dieser Browser kann kein Web-Bluetooth (nur Chrome auf Android/Windows).","err"); return; }
   try{
+    // Schnellverbinden: bereits erlaubtes Gerät direkt nehmen (ohne Auswahl-Dialog)
+    let d=null;
+    if(navigator.bluetooth.getDevices){
+      try{ const g=await navigator.bluetooth.getDevices(); d=g.find(x=>/nohrd|bike|rower/i.test(x.name||""))||g[0]||null; }catch(e){}
+    }
+    if(d){
+      setStatus("Verbinde mit "+(d.name||"Bike")+" …");
+      try{ await attach(d); return; }catch(e){ setStatus("Schnellverbinden klappt nicht — bitte Gerät wählen …"); }
+    }
     setStatus("Suche Bike …");
-    dev = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
-    dev.addEventListener("gattserverdisconnected",()=>{ setStatus("Verbindung getrennt.","err"); showRec("off"); });
-    const srv = await dev.gatt.connect();
-    const fs = await srv.getPrimaryService(SVC_FTMS);
-    // Widerstandsbereich lesen (optional)
-    try{ const rc=await fs.getCharacteristic(CH_RESRANGE); const rv=await rc.readValue();
-      resRange={min:rv.getInt16(0,true),max:rv.getInt16(2,true),inc:rv.getUint16(4,true)}; }catch(e){ resRange=null; }
-    bikeChar = await fs.getCharacteristic(CH_BIKE);
-    await bikeChar.startNotifications();
-    bikeChar.addEventListener("characteristicvaluechanged",onBike);
-    setStatus("Verbunden mit "+(dev.name||"Bike")+" — tritt los, dann ▶ Start.","ok");
-    $("b-connect").textContent="▶ Start"; $("b-connect").onclick=start;
+    const picked = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
+    await attach(picked);
   }catch(e){ setStatus("Verbindung abgebrochen: "+e.message,"err"); }
+}
+async function attach(d){
+  dev=d;
+  dev.addEventListener("gattserverdisconnected",()=>{ setStatus("Verbindung getrennt.","err"); showRec("off"); });
+  const srv = await dev.gatt.connect();
+  const fs = await srv.getPrimaryService(SVC_FTMS);
+  try{ const rc=await fs.getCharacteristic(CH_RESRANGE); const rv=await rc.readValue();
+    resRange={min:rv.getInt16(0,true),max:rv.getInt16(2,true),inc:rv.getUint16(4,true)}; }catch(e){ resRange=null; }
+  bikeChar = await fs.getCharacteristic(CH_BIKE);
+  await bikeChar.startNotifications();
+  bikeChar.addEventListener("characteristicvaluechanged",onBike);
+  setStatus("Verbunden mit "+(dev.name||"Bike")+" — tritt los, dann ▶ Start.","ok");
+  $("b-connect").textContent="▶ Start"; $("b-connect").onclick=start;
 }
 
 // ---------- Start / Pause / Stop ----------
 async function start(){
   if(!bikeChar){ return connect(); }
   running=true; paused=false; startedAt=new Date();
-  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null;
+  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null;
   $("b-connect").textContent="läuft"; $("b-connect").classList.remove("go");
   requestWake();
   tick=setInterval(step,1000);
@@ -290,9 +314,10 @@ function step(){
   const vmps = roadSpeedMps(P);
   roadDist += vmps;                    // m (1 s)
   last.roadKmh = vmps*3.6;
-  emaW = ema(emaW, P);
-  if(last.resPct!=null) emaRes = ema(emaRes, last.resPct);
-  last.dispW = emaW; last.dispRoadKmh = roadSpeedMps(emaW)*3.6; last.dispRes = emaRes;
+  emaW = ema(emaW, P, SMOOTH);
+  emaWpow = ema(emaWpow, P, SMOOTH_POW);
+  if(last.resPct!=null) emaRes = ema(emaRes, last.resPct, SMOOTH);
+  last.dispW = emaWpow; last.dispRoadKmh = roadSpeedMps(emaW)*3.6; last.dispRes = emaRes;
   samples.push({t:elapsed, road_kmh:+(vmps*3.6).toFixed(2), dev_kmh:last.speedKmh??null,
     cad:last.cadence??null, pow:last.power??null, res_pct:last.resPct!==null?+last.resPct.toFixed(0):null,
     res_raw:last.resRaw??null, grade_pct:+(gradeFraction()*100).toFixed(1),
