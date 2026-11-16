@@ -76,6 +76,7 @@
   </div>
 
   <div class="status" id="status">Noch nicht verbunden.</div>
+  <div id="foot" style="padding:4px 20px 12px;text-align:center;font-size:11px;color:#b4b1ad"></div>
 
   <div class="bar">
     <button id="b-connect" class="go">🔗 Verbinden</button>
@@ -121,6 +122,7 @@
       <div class="row"><div><label>Ordner</label><input id="g-path" value="data"></div><div><label>Branch</label><input id="g-branch" value="main"></div></div>
       <label>Token (fine-grained PAT – Contents: write)</label>
       <input id="g-token" type="password" autocomplete="off" placeholder="github_pat_…">
+      <div style="display:flex;gap:10px;align-items:center;margin-top:8px"><button type="button" id="g-test" class="ghost">GitHub testen</button><span id="g-status" class="hint" style="margin-top:0"></span></div>
       <div class="hint">Token bleibt nur in diesem Browser gespeichert, nie im Seitencode. Beim Stopp wird die Fahrt als JSON ins Repo committet.</div>
       <label style="margin-top:16px">Rohdaten-Diagnose (letztes BLE-Paket)</label>
       <div id="dbg">– noch kein Paket –</div>
@@ -133,7 +135,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.0";  // Phase 2 – PWA (Vollbild/Handy) + dauerhafte Speicherung ins GitHub-Repo
+const APP_VERSION = "0.2.1";  // Phase 2 – PWA + GitHub; Diagnose: Versionsanzeige, GitHub-Status, Test-Knopf; SW network-first
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -354,6 +356,30 @@ async function commitToGithub(obj){
     return {ok:false,msg:"HTTP "+r.status+(t?" "+t:"")};
   }catch(e){ return {ok:false,msg:e.message}; }
 }
+function updateFoot(){ const f=$("foot"); if(!f) return; const ok=gh&&gh.owner&&gh.repo&&gh.token; f.textContent="v"+APP_VERSION+" · GitHub: "+(ok?("✓ "+gh.owner+"/"+gh.repo):"– nicht eingerichtet"); }
+async function githubTest(){
+  const st=$("g-status");
+  gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
+  saveGh(gh); updateFoot();
+  if(!gh.owner||!gh.repo||!gh.token){ st.textContent="Unvollständig → Owner="+(gh.owner||"∅")+", Repo="+(gh.repo||"∅")+", Token-Länge="+(gh.token?gh.token.length:0); return; }
+  st.textContent="gespeichert (Owner="+gh.owner+", Repo="+gh.repo+", Token-Länge="+gh.token.length+") – teste …";
+  const r=await commitProbe(gh);
+  st.textContent = r.ok ? "✓ OK – Schreibzugriff da. Testdatei data/.pwa-test.json angelegt." : "✗ "+r.msg;
+}
+async function commitProbe(g){
+  try{
+    const rel=(g.path?g.path.replace(/^\/+|\/+$/g,"")+"/":"")+".pwa-test.json";
+    const url="https://api.github.com/repos/"+g.owner+"/"+g.repo+"/contents/"+rel.split("/").map(encodeURIComponent).join("/");
+    let sha=null;
+    try{ const gr=await fetch(url+"?ref="+encodeURIComponent(g.branch||"main"),{headers:{"Authorization":"Bearer "+g.token,"Accept":"application/vnd.github+json"}}); if(gr.ok){ sha=(await gr.json()).sha; } }catch(e){}
+    const body={ message:"PWA-Test "+new Date().toISOString(), content:btoa(unescape(encodeURIComponent(JSON.stringify({test:Date.now()},null,1)))), branch:(g.branch||"main") };
+    if(sha) body.sha=sha;
+    const r=await fetch(url,{ method:"PUT", headers:{"Authorization":"Bearer "+g.token,"Accept":"application/vnd.github+json","Content-Type":"application/json"}, body:JSON.stringify(body) });
+    if(r.ok) return {ok:true};
+    let t=""; try{ t=(await r.json()).message||""; }catch(e){}
+    return {ok:false,msg:"HTTP "+r.status+(t?" – "+t:"")};
+  }catch(e){ return {ok:false,msg:(e.message||"Fehler")+" (evtl. kein Netz/CORS)"}; }
+}
 
 // ---------- Wake Lock / Vollbild ----------
 async function requestWake(){ try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }catch(e){} }
@@ -375,7 +401,8 @@ function saveSettings(){
         resmin:+$("s-resmin").value, resmax:+$("s-resmax").value };
   saveCfg(cfg);
   gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
-  saveGh(gh);
+  saveGh(gh); updateFoot();
+  setStatus("Einstellungen gespeichert · GitHub: "+((gh.owner&&gh.repo&&gh.token)?("✓ "+gh.owner+"/"+gh.repo):"unvollständig"),"ok");
   $("dlg").close(); renderLive();
 }
 
@@ -387,8 +414,9 @@ $("b-stop").onclick=stop;
 $("b-settings").onclick=openSettings;
 $("s-save").onclick=saveSettings;
 $("s-close").onclick=()=>$("dlg").close();
+$("g-test").onclick=githubTest;
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
-renderLive();
+renderLive(); updateFoot();
 </script>
 </body>
 </html>
