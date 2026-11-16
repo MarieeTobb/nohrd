@@ -148,7 +148,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.5";  // Design: breiterer Rahmen, Fettung zurück, Zeit/Distanz kleiner (100:00), Distanz km 2 Nachkomma, REC = roter Punkt, Stopp -> Verwerfen/Speichern-Dialog
+const APP_VERSION = "0.2.6";  // Anzeige geglättet (EMA) für Watt/Straßentempo/Widerstand; Rohdaten bleiben ungeglättet; Distanz-Anzeige in km korrigiert
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -170,6 +170,9 @@ let running=false, paused=false, startedAt=null;
 let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
 let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
 let samples=[], tick=null, wakeLock=null, pendingJson=null;
+let emaW=null, emaRes=null;                 // geglättete Anzeigewerte
+const SMOOTH=0.4;                            // Glättungsstärke (1 = aus, kleiner = ruhiger); 0.4 ≈ ruhig ohne spürbaren Lag bei 1 Hz
+const ema=(p,v)=> (p==null?v:(SMOOTH*v+(1-SMOOTH)*p));
 let devDist0=null;
 
 // ---------- Hilfen ----------
@@ -273,7 +276,7 @@ async function connect(){
 async function start(){
   if(!bikeChar){ return connect(); }
   running=true; paused=false; startedAt=new Date();
-  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null;
+  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null;
   $("b-connect").textContent="läuft"; $("b-connect").classList.remove("go");
   requestWake();
   tick=setInterval(step,1000);
@@ -287,6 +290,9 @@ function step(){
   const vmps = roadSpeedMps(P);
   roadDist += vmps;                    // m (1 s)
   last.roadKmh = vmps*3.6;
+  emaW = ema(emaW, P);
+  if(last.resPct!=null) emaRes = ema(emaRes, last.resPct);
+  last.dispW = emaW; last.dispRoadKmh = roadSpeedMps(emaW)*3.6; last.dispRes = emaRes;
   samples.push({t:elapsed, road_kmh:+(vmps*3.6).toFixed(2), dev_kmh:last.speedKmh??null,
     cad:last.cadence??null, pow:last.power??null, res_pct:last.resPct!==null?+last.resPct.toFixed(0):null,
     res_raw:last.resRaw??null, grade_pct:+(gradeFraction()*100).toFixed(1),
@@ -322,16 +328,19 @@ function discardRide(){ $("savedlg").close(); pendingJson=null; setStatus("Fahrt
 
 // ---------- Anzeige ----------
 function renderLive(){
+  const run = running;
+  const showW    = (run && last.dispW!=null)       ? last.dispW       : last.power;
+  const showRoad = (run && last.dispRoadKmh!=null)  ? last.dispRoadKmh : (last.power!=null?roadSpeedMps(last.power)*3.6:null);
+  const showRes  = (run && last.dispRes!=null)      ? last.dispRes     : last.resPct;
   $("t-time").textContent = fmtTime(elapsed);
-  $("t-dist").textContent = de(Math.round(roadDist),0);
-  const rk = running ? (last.roadKmh??0) : roadSpeedMps(last.power||0)*3.6;
-  $("t-speed").innerHTML = (last.power!==null?de(rk,1):"–")+'<span class="u">km/h</span>';
-  $("t-pow").textContent = last.power!==null?de(last.power,0):"–";
-  $("t-cad").innerHTML = (last.cadence!==null?de(last.cadence,0):"–")+'<span class="u">U/min</span>';
-  $("t-res").innerHTML = last.resPct!==null?de(last.resPct,0)+'<span class="u">%</span>':(last.resRaw!==null?de(last.resRaw,0):"–");
+  $("t-dist").textContent = de(roadDist/1000,2);
+  $("t-speed").innerHTML = (showRoad!=null?de(showRoad,1):"–")+'<span class="u">km/h</span>';
+  $("t-pow").textContent = showW!=null?de(showW,0):"–";
+  $("t-cad").innerHTML = (last.cadence!=null?de(last.cadence,0):"–")+'<span class="u">U/min</span>';
+  $("t-res").innerHTML = showRes!=null?de(showRes,0)+'<span class="u">%</span>':(last.resRaw!=null?de(last.resRaw,0):"–");
   $("t-kcal").innerHTML = de(energyKJ,0)+'<span class="u">kcal</span>';
   $("t-grade").innerHTML = de(gradeFraction()*100,1)+'<span class="u">%</span>';
-  $("t-hr").textContent = last.hr!==null?de(last.hr,0):"–";
+  $("t-hr").textContent = last.hr!=null?de(last.hr,0):"–";
 }
 
 // ---------- JSON ----------
