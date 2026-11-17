@@ -12,11 +12,11 @@
   html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);padding:calc(1cm + env(safe-area-inset-top,0px)) 0.6cm calc(1cm + env(safe-area-inset-bottom,0px))}
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .top .cell{background:var(--tile);padding:8px 16px 10px}
-  .lab{font-size:15px;color:#333;font-weight:600;letter-spacing:.01em}
-  .big{font-size:42px;font-weight:300;color:#2b2b2b;line-height:1;margin-top:3px;white-space:nowrap}
+  .top .cell{background:var(--tile);padding:6px 16px 8px}
+  .lab{font-size:14px;color:#333;font-weight:600;letter-spacing:.01em}
+  .big{font-size:38px;font-weight:300;color:#2b2b2b;line-height:1;margin-top:2px;white-space:nowrap}
   .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 6px}
-  .stack{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .stack{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:6px}
   .oval{width:100%;background:#fff;border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:86px;padding:4px 16px;box-sizing:border-box;text-align:center}
   #playoval{cursor:pointer;-webkit-user-select:none;user-select:none}
   #playoval.rec{border-color:#d11}
@@ -30,19 +30,26 @@
   .hero .lab{font-size:16px;color:#333;font-weight:600}
   .hero .num{font-size:46px;font-weight:300;line-height:1;margin-top:0;color:#2b2b2b}
   .hero .num .u{font-size:19px;color:#9fb0bb;margin-left:6px;font-weight:400}
+  .oval.goal{height:40px}
+  #goaltext{font-size:17px;color:#2b2b2b;font-weight:300}
+  #goaltext.empty{color:#9a9a9a}
+  .oval.prog{height:42px;gap:8px;padding:8px 20px}
+  .pbar{width:100%;height:11px;background:#ececec;border-radius:6px;overflow:hidden}
+  .pfill{height:100%;width:0;border-radius:6px;transition:width .5s ease, background-color .3s}
+  #pfillA{background:#cfccc8}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:7px 14px 8px;min-height:46px}
-  .cell .val{font-size:34px;font-weight:300;margin-top:1px;color:#2b2b2b}
-  .cell .val .u{font-size:15px;color:#9fb0bb;margin-left:4px;font-weight:400}
+  .grid .cell{background:var(--tile);padding:5px 14px 6px;min-height:38px}
+  .cell .val{font-size:28px;font-weight:300;margin-top:1px;color:#2b2b2b}
+  .cell .val .u{font-size:14px;color:#9fb0bb;margin-left:4px;font-weight:400}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
   .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
-  .bar button{flex:1;background:var(--tile);border:0;padding:16px 8px;font-size:16px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .bar button{flex:1;background:var(--tile);border:0;padding:12px 8px;font-size:16px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
   .bar button:active{background:#f3f1ee}
   .bar button.stop{background:var(--red);color:#fff;max-width:76px}
   .bar button.go{background:var(--teal);color:#fff}
   .bar button.conn{background:#2f8a7a;color:#fff}
-  .status{padding:10px 20px;font-size:12.5px;color:var(--mut);text-align:center;background:var(--bg);min-height:20px}
+  .status{padding:5px 20px;font-size:12.5px;color:var(--mut);text-align:center;background:var(--bg);min-height:16px}
   .status.err{color:var(--red)}
   .status.ok{color:var(--teal)}
   dialog{border:0;border-radius:14px;padding:0;max-width:440px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -85,6 +92,11 @@
         <div class="lab">Straßengeschwindigkeit</div>
         <div class="num" id="t-speed">–<span class="u">km/h</span></div>
       </div>
+      <div class="oval goal" id="goaloval"><div id="goaltext" class="empty">Ziel setzen</div></div>
+      <div class="oval prog" id="progoval" style="display:none">
+        <div class="pbar"><div class="pfill" id="pfillA"></div></div>
+        <div class="pbar"><div class="pfill" id="pfillB"></div></div>
+      </div>
     </div>
   </div>
 
@@ -98,7 +110,7 @@
   </div>
 
   <div class="status" id="status">Noch nicht verbunden.</div>
-  <div id="foot" style="padding:4px 20px 12px;text-align:center;font-size:11px;color:#b4b1ad"></div>
+  <div id="foot" style="padding:2px 20px 6px;text-align:center;font-size:11px;color:#b4b1ad"></div>
 
   <div class="bar">
     <button id="b-connect" class="go">🔗 Verbinden</button>
@@ -170,9 +182,28 @@
     </div>
   </dialog>
 
+  <!-- Trainingsziel -->
+  <dialog id="goaldlg">
+    <div class="dh">Trainingsziel</div>
+    <div class="db">
+      <label>Ziel A — Dauer oder Strecke</label>
+      <div class="row">
+        <div><select id="ga-metric"><option value="time">Zeit (Min)</option><option value="km">Strecke (km)</option></select></div>
+        <div><input id="ga-val" type="number" step="1" inputmode="decimal" placeholder="60"></div>
+      </div>
+      <label>Ziel B — Leistung</label>
+      <div class="row">
+        <div><select id="gb-metric"><option value="kcal">Kalorien (kcal)</option><option value="km">Strecke (km)</option><option value="work">Arbeit (kJ)</option></select></div>
+        <div><input id="gb-val" type="number" step="1" inputmode="decimal" placeholder="1000"></div>
+      </div>
+      <div class="hint">Beispiel: 60 Min + 1000 kcal. Der B-Balken wird <b>grün</b>, wenn das Ziel bei der aktuellen 60-Sekunden-Leistung ~genau erreicht wird, <b>rot</b> wenn nicht, <b>orange</b> bei Übertreffen.</div>
+    </div>
+    <div class="df"><button class="ghost" id="goal-del">Ziel löschen</button><button class="ghost" id="goal-cancel">Abbrechen</button><button class="primary" id="goal-save">Speichern</button></div>
+  </dialog>
+
 <script>
 "use strict";
-const APP_VERSION = "0.2.13";  // Ovale gleich hoch; Play weiß+ausgegrauter Pfeil; Pause = zwei schwarze Balken; Zahlen dünn (an alte App angeglichen)
+const APP_VERSION = "0.2.14";  // Trainingsziel (A: Zeit/km + B: km/kJ/kcal) mit Ziel-Oval und Fortschritts-Oval (zweiteiliger Balken, B-Farbe per 60-s-Prognose rot/grün/orange)
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -187,6 +218,9 @@ let cfg = loadCfg();
 function loadGh(){ try{return JSON.parse(localStorage.getItem("nohrd_gh")||"null");}catch(e){return null;} }
 function saveGh(g){ try{localStorage.setItem("nohrd_gh",JSON.stringify(g));}catch(e){} }
 let gh = loadGh();
+function loadGoal(){ try{ return JSON.parse(localStorage.getItem("nohrd_goal")||"null"); }catch(e){ return null; } }
+function saveGoalLS(g){ try{ g?localStorage.setItem("nohrd_goal",JSON.stringify(g)):localStorage.removeItem("nohrd_goal"); }catch(e){} }
+let goal = loadGoal();
 
 // ---------- Laufzeitzustand ----------
 let dev=null, bikeChar=null, resRange=null;
@@ -219,6 +253,73 @@ function playClick(){
   if(!connected){ connect(); return; }
   if(!running){ start(); } else { togglePause(); }
 }
+
+// ---------- Trainingsziel ----------
+function gNum(n){ return (n==null)?"":Number(n).toLocaleString("de-DE",{maximumFractionDigits:(Number.isInteger(n)?0:1)}); }
+function goalText(){
+  if(!goal) return null;
+  const a = goal.aMetric==="time" ? gNum(goal.aVal)+" Min" : gNum(goal.aVal)+" km";
+  const bU = goal.bMetric==="km"?"km":(goal.bMetric==="work"?"kJ":"kcal");
+  return a+" · "+gNum(goal.bVal)+" "+bU;
+}
+function renderGoal(){
+  const t=$("goaltext"); if(!t) return;
+  const g=goalText();
+  if(g){ t.textContent=g; t.classList.remove("empty"); $("progoval").style.display=""; }
+  else { t.textContent="Ziel setzen"; t.classList.add("empty"); $("progoval").style.display="none"; }
+  updateProg();
+}
+function windowDelta(){
+  const n=samples.length; if(n<2) return null;
+  const last=samples[n-1], back=samples[Math.max(0,n-61)];
+  const dt=last.t-back.t; if(dt<=0) return null;
+  return { dt, dKm:(last.road_dist_m-back.road_dist_m)/1000, dKJ:(last.kcal-back.kcal) };
+}
+function goalProgress(){
+  if(!goal) return null;
+  const aGoal = goal.aMetric==="time" ? goal.aVal*60 : goal.aVal;
+  const aCur  = goal.aMetric==="time" ? elapsed : roadDist/1000;
+  const bGoal = goal.bVal;
+  const bCur  = goal.bMetric==="km" ? roadDist/1000 : energyKJ;   // work(kJ) und kcal: beide = energyKJ
+  const aFrac = aGoal>0?Math.min(1,aCur/aGoal):0;
+  const bFrac = bGoal>0?Math.min(1,bCur/bGoal):0;
+  let color="grey";
+  if(running){
+    const w=windowDelta();
+    const rateB = w ? (goal.bMetric==="km"? w.dKm : w.dKJ)/w.dt : 0;
+    let tRem;
+    if(goal.aMetric==="time") tRem=Math.max(0,aGoal-elapsed);
+    else { const vKm = w? w.dKm/w.dt : 0; tRem = vKm>1e-6? Math.max(0,aGoal-aCur)/vKm : Infinity; }
+    let ratio;
+    if(aFrac>=1) ratio = bGoal>0? bCur/bGoal : 0;
+    else if(!isFinite(tRem)) ratio = 0;
+    else ratio = bGoal>0? (bCur+rateB*tRem)/bGoal : 0;
+    color = ratio<0.98?"red":(ratio<=1.10?"green":"orange");
+  }
+  return {aFrac,bFrac,color};
+}
+const PCOL={red:"#d9534f",green:"#4a9d5b",orange:"#e0922f",grey:"#cfccc8"};
+function updateProg(){
+  if(!goal){ return; }
+  const p=goalProgress(); if(!p) return;
+  const fa=$("pfillA"), fb=$("pfillB"); if(!fa) return;
+  fa.style.width=(p.aFrac*100).toFixed(1)+"%";
+  fb.style.width=(p.bFrac*100).toFixed(1)+"%";
+  fb.style.background=PCOL[p.color]||"#cfccc8";
+}
+function openGoalDlg(){
+  const g=goal||{};
+  $("ga-metric").value=g.aMetric||"time"; $("ga-val").value=g.aVal||"";
+  $("gb-metric").value=g.bMetric||"kcal"; $("gb-val").value=g.bVal||"";
+  $("goaldlg").showModal();
+}
+function saveGoalFromDlg(){
+  const av=parseFloat($("ga-val").value), bv=parseFloat($("gb-val").value);
+  if(!(av>0)||!(bv>0)){ return; }
+  goal={ aMetric:$("ga-metric").value, aVal:av, bMetric:$("gb-metric").value, bVal:bv };
+  saveGoalLS(goal); $("goaldlg").close(); renderGoal();
+}
+function deleteGoal(){ goal=null; saveGoalLS(null); $("goaldlg").close(); renderGoal(); }
 
 // ---------- Straßenmodell: Watt -> v ----------
 function totalMass(){ return (parseFloat(cfg.rider)||85)+(parseFloat(cfg.bike)||8); }
@@ -365,7 +466,7 @@ function step(){
     cad:last.cadence??null, pow:last.power??null, res_pct:last.resPct!==null?+last.resPct.toFixed(0):null,
     res_raw:last.resRaw??null, grade_pct:+(gradeFraction()*100).toFixed(1),
     dev_dist_m:last.devDist||0, road_dist_m:Math.round(roadDist), kcal:+energyKJ.toFixed(1), hr:last.hr??null});
-  renderLive();
+  renderLive(); updateProg();
 }
 function togglePause(){ if(!running)return; paused=!paused; showRec(paused?"pause":"rec"); updatePlay(); }
 function stop(){
@@ -521,8 +622,12 @@ $("g-test").onclick=githubTest;
 $("g-edit-btn").onclick=showGhEdit;
 $("save-yes").onclick=saveRide;
 $("save-no").onclick=discardRide;
+$("goaloval").onclick=openGoalDlg;
+$("goal-save").onclick=saveGoalFromDlg;
+$("goal-del").onclick=deleteGoal;
+$("goal-cancel").onclick=()=>$("goaldlg").close();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
-renderLive(); updateFoot(); updatePlay();
+renderLive(); updateFoot(); updatePlay(); renderGoal();
 </script>
 </body>
 </html>
