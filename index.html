@@ -11,15 +11,16 @@
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);padding:calc(1cm + env(safe-area-inset-top,0px)) 0.6cm calc(1cm + env(safe-area-inset-bottom,0px))}
-  .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .top .cell{background:var(--tile);padding:6px 16px 8px}
+  .top{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .top .cell{background:#fff;border:4px solid #cfccc8;border-radius:40px;height:82px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 16px}
   .lab{font-size:14px;color:#333;font-weight:600;letter-spacing:.01em}
-  .big{font-size:38px;font-weight:300;color:#2b2b2b;line-height:1;margin-top:2px;white-space:nowrap}
+  .big{font-size:30px;font-weight:300;color:#2b2b2b;line-height:1;margin-top:2px;white-space:nowrap}
   .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 6px}
   .stack{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:6px}
-  .oval{width:100%;background:#fff;border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:82px;padding:4px 16px;box-sizing:border-box;text-align:center}
+  .oval{width:100%;background:#fff;border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:72px;padding:4px 16px;box-sizing:border-box;text-align:center}
   #playoval{cursor:pointer;-webkit-user-select:none;user-select:none}
   #playoval.rec{border-color:#d11}
+  #goaloval.active{border-color:#4a9d5b}
   #playsym{display:flex;align-items:center;justify-content:center;height:100%}
   .tri{width:0;height:0;border-style:solid;border-width:20px 0 20px 34px;border-color:transparent transparent transparent #2b2b2b}
   .tri.dim{border-left-color:#cfccc8}
@@ -32,25 +33,25 @@
   .hero .num .u{font-size:19px;color:#9fb0bb;margin-left:6px;font-weight:400}
   #goaltext{font-size:17px;color:#2b2b2b;font-weight:300}
   #goaltext.empty{color:#9a9a9a}
-  .oval.prog{gap:12px;padding:10px 24px}
-  .pbar{width:100%;height:22px;background:#efeeec;border-radius:11px;overflow:hidden}
-  .pfill{height:100%;width:0;border-radius:11px;transition:width .5s ease, background-color .3s}
+  .oval.prog{gap:10px;padding:8px 22px}
+  .pbar{width:100%;height:20px;background:#efeeec;border-radius:10px;overflow:hidden}
+  .pfill{height:100%;width:0;border-radius:10px;transition:width .5s ease, background-color .3s}
   #pfillA{background:#c2bdb6}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{padding:7px 12px;border:1px solid #ddd;border-radius:16px;background:#f6f6f6;font-size:13px;color:#333;cursor:pointer;font-family:inherit}
   .chip:active{background:#ececec}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:4px 14px 5px;min-height:34px}
-  .cell .val{font-size:27px;font-weight:300;margin-top:1px;color:#2b2b2b}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:#d9d6d2;border:3px solid #d9d6d2;border-radius:26px;overflow:hidden}
+  .grid .cell{background:#fff;padding:5px 14px 6px;min-height:40px;display:flex;flex-direction:column;justify-content:center}
+  .cell .val{font-size:30px;font-weight:300;margin-top:1px;color:#2b2b2b}
   .cell .val .u{font-size:14px;color:#9fb0bb;margin-left:4px;font-weight:400}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
-  .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
-  .bar button{flex:1;background:var(--tile);border:0;padding:10px 8px;font-size:16px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .bar{display:flex;gap:8px;padding-top:2px}
+  .bar button{flex:1;background:#fff;border:3px solid #cfccc8;border-radius:28px;padding:11px 6px;font-size:15px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
   .bar button:active{background:#f3f1ee}
-  .bar button.stop{background:var(--red);color:#fff;max-width:76px}
-  .bar button.go{background:var(--teal);color:#fff}
-  .bar button.conn{background:#2f8a7a;color:#fff}
+  .bar button.stop{background:var(--red);color:#fff;border-color:var(--red)}
+  .bar button.go{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .bar button.conn{background:#2f8a7a;color:#fff;border-color:#2f8a7a}
   .status{padding:5px 20px;font-size:12.5px;color:var(--mut);text-align:center;background:var(--bg);min-height:16px}
   .status.err{color:var(--red)}
   .status.ok{color:var(--teal)}
@@ -206,7 +207,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.15";  // Alle Ovale gleich hoch, dickere Balken, roter Punkt weg, Übertreffen=helles Gelb, Ziel-Verlauf als Chips
+const APP_VERSION = "0.2.16";  // Ziel per Touch-Zyklus aktivieren (grüner Rahmen), Auto-Pause bei Zielerreichung (Werte eingefroren), Felder/Bar als Pills, Raster gerundet mit einheitlicher Zahlengröße
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -224,6 +225,7 @@ let gh = loadGh();
 function loadGoal(){ try{ return JSON.parse(localStorage.getItem("nohrd_goal")||"null"); }catch(e){ return null; } }
 function saveGoalLS(g){ try{ g?localStorage.setItem("nohrd_goal",JSON.stringify(g)):localStorage.removeItem("nohrd_goal"); }catch(e){} }
 let goal = loadGoal();
+let goalPhase = 0, goalHit = false;   // 0=aus, 1=aktiv, 2=aktiv+bearbeitet
 
 // ---------- Laufzeitzustand ----------
 let dev=null, bikeChar=null, resRange=null;
@@ -266,11 +268,25 @@ function goalText(g){
   return a+" · "+gNum(g.bVal)+" "+bU;
 }
 function renderGoal(){
-  const t=$("goaltext"); if(!t) return;
+  const t=$("goaltext"), ov=$("goaloval"); if(!t) return;
   const g=goalText();
-  if(g){ t.textContent=g; t.classList.remove("empty"); $("progoval").style.display=""; }
-  else { t.textContent="Ziel setzen"; t.classList.add("empty"); $("progoval").style.display="none"; }
+  if(g){ t.textContent=g; t.classList.remove("empty"); }
+  else { t.textContent="Ziel setzen"; t.classList.add("empty"); goalPhase=0; }
+  const active = goalPhase>0 && !!goal;
+  if(ov) ov.classList.toggle("active", active);
+  $("progoval").style.display = active ? "" : "none";
   updateProg();
+}
+// Touch-Zyklus: aus -> aktiv(grün) -> Ziel bearbeiten -> aus
+function goalTap(){
+  if(goalPhase===0){
+    if(goal){ goalPhase=1; renderGoal(); }   // aktivieren
+    else { openGoalDlg(); }                    // noch kein Ziel -> Dialog
+  } else if(goalPhase===1){
+    goalPhase=2; renderGoal(); openGoalDlg();  // bearbeiten, bleibt aktiv
+  } else {
+    goalPhase=0; renderGoal();                 // abschalten
+  }
 }
 function windowDelta(){
   const n=samples.length; if(n<2) return null;
@@ -321,7 +337,7 @@ function saveGoalFromDlg(){
   const av=parseFloat($("ga-val").value), bv=parseFloat($("gb-val").value);
   if(!(av>0)||!(bv>0)){ return; }
   goal={ aMetric:$("ga-metric").value, aVal:av, bMetric:$("gb-metric").value, bVal:bv };
-  saveGoalLS(goal); addHist(goal); $("goaldlg").close(); renderGoal();
+  saveGoalLS(goal); addHist(goal); if(goalPhase===0) goalPhase=1; $("goaldlg").close(); renderGoal();
 }
 function deleteGoal(){ goal=null; saveGoalLS(null); $("goaldlg").close(); renderGoal(); }
 function loadHist(){ try{ return JSON.parse(localStorage.getItem("nohrd_goal_hist")||"[]")||[]; }catch(e){ return []; } }
@@ -458,7 +474,7 @@ async function attach(d){
 async function start(){
   if(!bikeChar){ return connect(); }
   running=true; paused=false; startedAt=new Date();
-  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null;
+  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null; goalHit=false;
   requestWake();
   tick=setInterval(step,1000);
   setStatus("Aufzeichnung läuft.","ok"); showRec("rec"); updatePlay();
@@ -481,6 +497,7 @@ function step(){
     res_raw:last.resRaw??null, grade_pct:+(gradeFraction()*100).toFixed(1),
     dev_dist_m:last.devDist||0, road_dist_m:Math.round(roadDist), kcal:+energyKJ.toFixed(1), hr:last.hr??null});
   renderLive(); updateProg();
+  if(goalPhase>0 && goal && !goalHit){ const gp=goalProgress(); if(gp && (gp.aFrac>=1||gp.bFrac>=1)){ goalHit=true; paused=true; showRec("pause"); updatePlay(); setStatus("Ziel erreicht – Pause.","ok"); } }
 }
 function togglePause(){ if(!running)return; paused=!paused; showRec(paused?"pause":"rec"); updatePlay(); }
 function stop(){
@@ -636,7 +653,7 @@ $("g-test").onclick=githubTest;
 $("g-edit-btn").onclick=showGhEdit;
 $("save-yes").onclick=saveRide;
 $("save-no").onclick=discardRide;
-$("goaloval").onclick=openGoalDlg;
+$("goaloval").onclick=goalTap;
 $("goal-save").onclick=saveGoalFromDlg;
 $("goal-del").onclick=deleteGoal;
 $("goal-cancel").onclick=()=>$("goaldlg").close();
