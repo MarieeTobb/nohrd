@@ -11,11 +11,11 @@
   body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:300;color:var(--ink);font-variant-numeric:tabular-nums}
   .wrap{max-width:1000px;margin:0 auto;padding:46px 24px 90px}
   .brand{text-align:center;letter-spacing:.3em;font-size:12px;color:#b5b5b5;text-transform:uppercase;margin-bottom:10px}
-  h1{font-weight:300;letter-spacing:.22em;text-transform:uppercase;color:#8a8a8a;font-size:20px;text-align:center;margin:0 0 30px}
-  .status{text-align:center;color:#9a9a9a;font-size:13px;letter-spacing:.03em;margin:0 0 22px;min-height:18px}
+  h1{font-weight:300;letter-spacing:.22em;text-transform:uppercase;color:#8a8a8a;font-size:20px;text-align:center;margin:0 0 10px}
+  .status{text-align:center;color:#9a9a9a;font-size:13px;letter-spacing:.03em;margin:0 0 8px;min-height:18px}
   .status.err{color:#b33}
   /* Summenleiste – Entwurf A */
-  #sum:not(:empty){border-top:1px solid var(--navy);border-bottom:1px solid var(--line);padding:22px 0 24px;margin:0 0 40px}
+  #sum:not(:empty){border-bottom:1px solid var(--line);padding:6px 0 24px;margin:0 0 40px}
   #sum .sumhead{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:0 0 18px 20px}
   #sum .tiles{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0}
   #sum .tile{flex:1 1 0;min-width:96px;padding:0 20px;text-align:left;position:relative}
@@ -164,7 +164,7 @@ async function render(){
   renderSummary(rows);
   const older=allFiles.some(f=>f.ts<cutoff);
   $("more").style.display=older?"":"none";
-  $("more").textContent="Mehr laden · weitere 30 Tage";
+  $("more").textContent="Mehr laden";
   setStatus("");
   $("note").innerHTML=`${rows.length} Fahrten · letzte ${windowDays} Tage`+(fail?` · ${fail} nicht lesbar`:"")+` · Quelle: ${CFG.owner}/${CFG.repo} &nbsp;·&nbsp; <a id="settoken">Token ändern</a>`;
   $("settoken").onclick=()=>{ $("tp").style.display="block"; $("tok").value=getCfg().token||""; $("tok").focus(); };
