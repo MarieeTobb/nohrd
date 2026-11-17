@@ -14,22 +14,26 @@
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
   .top .cell{background:var(--tile);padding:8px 16px 10px}
   .lab{font-size:15px;color:#333;font-weight:600;letter-spacing:.01em}
-  .big{font-size:42px;font-weight:700;color:#000;line-height:1;margin-top:3px;white-space:nowrap}
+  .big{font-size:42px;font-weight:300;color:#2b2b2b;line-height:1;margin-top:3px;white-space:nowrap}
   .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 6px}
   .stack{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:10px}
-  .oval{width:100%;background:var(--tile);border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:72px;padding:6px 16px;box-sizing:border-box;text-align:center}
+  .oval{width:100%;background:#fff;border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:86px;padding:4px 16px;box-sizing:border-box;text-align:center}
   #playoval{cursor:pointer;-webkit-user-select:none;user-select:none}
   #playoval.rec{border-color:#d11}
-  #playsym{font-size:36px;color:#000;line-height:1}
+  #playsym{display:flex;align-items:center;justify-content:center;height:100%}
+  .tri{width:0;height:0;border-style:solid;border-width:20px 0 20px 34px;border-color:transparent transparent transparent #2b2b2b}
+  .tri.dim{border-left-color:#cfccc8}
+  .bars{display:flex;gap:12px}
+  .bars i{display:block;width:12px;height:40px;background:#2b2b2b;border-radius:2px}
   .blink{animation:blink 1s steps(1,end) infinite}
   @keyframes blink{50%{opacity:0}}
   .hero .lab{font-size:16px;color:#333;font-weight:600}
-  .hero .num{font-size:46px;font-weight:700;line-height:1;margin-top:0;color:#000}
-  .hero .num .u{font-size:19px;color:#555;margin-left:6px;font-weight:600}
+  .hero .num{font-size:46px;font-weight:300;line-height:1;margin-top:0;color:#2b2b2b}
+  .hero .num .u{font-size:19px;color:#9fb0bb;margin-left:6px;font-weight:400}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
   .grid .cell{background:var(--tile);padding:7px 14px 8px;min-height:46px}
-  .cell .val{font-size:34px;font-weight:700;margin-top:1px;color:#000}
-  .cell .val .u{font-size:15px;color:#555;margin-left:4px;font-weight:600}
+  .cell .val{font-size:34px;font-weight:300;margin-top:1px;color:#2b2b2b}
+  .cell .val .u{font-size:15px;color:#9fb0bb;margin-left:4px;font-weight:400}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
   .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
@@ -76,7 +80,7 @@
 
   <div class="mid">
     <div class="stack">
-      <div class="oval" id="playoval"><div id="playsym">▶</div></div>
+      <div class="oval" id="playoval"><div id="playsym"></div></div>
       <div class="oval hero">
         <div class="lab">Straßengeschwindigkeit</div>
         <div class="num" id="t-speed">–<span class="u">km/h</span></div>
@@ -168,7 +172,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.12";  // Start/Pause als Oval über der Geschwindigkeit (rot bei Aufnahme, Play blinkt bei Pause); Verbinden-Knopf wird WLAN-Symbol
+const APP_VERSION = "0.2.13";  // Ovale gleich hoch; Play weiß+ausgegrauter Pfeil; Pause = zwei schwarze Balken; Zahlen dünn (an alte App angeglichen)
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -206,10 +210,10 @@ function showRec(state){ const p=$("pill"); if(!p) return; if(state==="off"){ p.
 function updatePlay(){
   const ov=$("playoval"), sym=$("playsym"); if(!ov) return;
   ov.classList.remove("rec"); sym.classList.remove("blink");
-  if(running && !paused){ ov.classList.add("rec"); sym.textContent="⏸"; }
-  else if(running && paused){ sym.textContent="▶"; sym.classList.add("blink"); }
-  else { sym.textContent="▶"; }
-  ov.style.opacity = connected ? "1" : "0.5";
+  if(running && !paused){ ov.classList.add("rec"); sym.innerHTML='<span class="bars"><i></i><i></i></span>'; }
+  else if(running && paused){ sym.innerHTML='<span class="tri"></span>'; sym.classList.add("blink"); }
+  else if(connected){ sym.innerHTML='<span class="tri"></span>'; }
+  else { sym.innerHTML='<span class="tri dim"></span>'; }
 }
 function playClick(){
   if(!connected){ connect(); return; }
