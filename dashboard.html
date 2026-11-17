@@ -32,9 +32,9 @@
   tbody tr:hover{background:#fafafa}
   td.datum{color:#555}
   .note{text-align:center;color:#bdbdbd;font-size:11px;margin-top:26px;letter-spacing:.03em}
-  .bar{text-align:center;margin:0 0 26px}
-  .bar button{padding:8px 18px;background:#fff;border:1px solid #ddd;border-radius:8px;color:#444;font-size:13px;cursor:pointer;font-family:inherit;margin:0 4px}
-  .bar button:hover{border-color:var(--navy);color:var(--navy)}
+  .morebtn{padding:9px 24px;background:#fff;border:1px solid #ddd;border-radius:8px;color:#444;font-size:13px;cursor:pointer;font-family:inherit}
+  .morebtn:hover{border-color:var(--navy);color:var(--navy)}
+  .note a{color:#9a9a9a;text-decoration:underline;cursor:pointer}
   #tp{max-width:560px;margin:10px auto 0;border:1px solid var(--line);padding:22px 24px;text-align:center;display:none}
   #tp p{color:#777;font-size:13px;margin:0 0 14px;line-height:1.5}
   #tp input{width:100%;box-sizing:border-box;padding:10px 12px;font-size:13px;border:1px solid #ccc;font-family:monospace}
@@ -46,7 +46,6 @@
   <div class="brand">Nohrd&nbsp;|&nbsp;Bike</div>
   <h1>Trainingsverlauf</h1>
   <div class="status" id="status">lädt …</div>
-  <div class="bar"><button id="reload">Neu laden</button><button id="settoken">Token ändern</button></div>
   <div id="tp">
     <p>GitHub-Token (Lesezugriff auf <b>nohrd-data</b>) eingeben.<br>Du kannst denselben fine-grained Token wie in der Live-App verwenden.</p>
     <input id="tok" type="password" spellcheck="false" placeholder="github_pat_…" autocomplete="off">
@@ -54,6 +53,7 @@
   </div>
   <div id="sum"></div>
   <table id="tbl"><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
+  <div style="text-align:center;margin-top:24px"><button id="more" class="morebtn" style="display:none">Mehr laden</button></div>
   <div class="note" id="note"></div>
 </div>
 
@@ -129,33 +129,48 @@ function renderSummary(rows){
     tile(de(sum("kcal"),0),"kcal")+`</div>`;
 }
 
+let allFiles=[], loaded={}, windowDays=30, CFG=null;
+function tsFromName(n){ const m=n.match(/(\d{4}) (\d{2}) (\d{2}) (\d{2})-(\d{2})/); return m? new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`).getTime() : 0; }
+
 async function load(){
   $("tp").style.display="none";
-  const cfg=getCfg();
-  if(!cfg.token){ setStatus("Kein Token gespeichert.","err"); $("tp").style.display="block"; return; }
+  CFG=getCfg();
+  if(!CFG.token){ setStatus("Kein Token gespeichert.","err"); $("tp").style.display="block"; return; }
   $("head").innerHTML=COLS.map(c=>`<th class="${c.l?"l":""}">${c.t}</th>`).join("");
-  setStatus("lädt Fahrten aus "+cfg.owner+"/"+cfg.repo+" …");
+  setStatus("lädt Liste aus "+CFG.owner+"/"+CFG.repo+" …");
   let files;
-  try{ files=await ghApi(cfg, cfg.path, false); }
-  catch(e){ setStatus("Fehler beim Laden der Liste: "+e.message,"err"); if(/401|403|404/.test(e.message)) $("tp").style.display="block"; return; }
-  const names=(Array.isArray(files)?files:[]).map(f=>f.name).filter(n=>/\.json$/i.test(n) && !/^\.pwa-test/.test(n));
-  if(!names.length){ setStatus("Noch keine Fahrten im Repo.","err"); $("body").innerHTML=""; $("sum").innerHTML=""; return; }
-  const rows=[]; let ok=0, fail=0;
-  for(const n of names){
-    try{ const txt=await ghApi(cfg, cfg.path+"/"+n.split("/").map(encodeURIComponent).join("/"), true);
-      rows.push(rowFrom(JSON.parse(txt))); ok++; }
-    catch(e){ fail++; }
-    setStatus("lädt … "+(ok+fail)+"/"+names.length);
-  }
-  rows.sort((a,b)=>b.ts-a.ts);
-  $("body").innerHTML=rows.map(r=>`<tr>${rowCells(r)}</tr>`).join("");
-  renderSummary(rows);
-  setStatus("");
-  $("note").textContent=`${rows.length} Fahrten`+(fail?` · ${fail} nicht lesbar`:"")+` · Quelle: ${cfg.owner}/${cfg.repo} · aktualisiert ${new Date().toLocaleString("de-DE",{hour:"2-digit",minute:"2-digit"})}`;
+  try{ files=await ghApi(CFG, CFG.path, false); }
+  catch(e){ setStatus("Fehler: "+e.message,"err"); if(/401|403|404/.test(e.message)) $("tp").style.display="block"; return; }
+  allFiles=(Array.isArray(files)?files:[]).map(f=>f.name).filter(n=>/\.json$/i.test(n) && !/^\.pwa-test/.test(n))
+            .map(n=>({name:n, ts:tsFromName(n)})).sort((a,b)=>b.ts-a.ts);
+  loaded={}; windowDays=30;
+  if(!allFiles.length){ setStatus("Noch keine Fahrten im Repo.","err"); $("body").innerHTML=""; $("sum").innerHTML=""; $("more").style.display="none"; $("note").textContent=""; return; }
+  await render();
 }
 
-$("reload").onclick=load;
-$("settoken").onclick=()=>{ $("tp").style.display="block"; $("tok").value=getCfg().token||""; $("tok").focus(); };
+async function render(){
+  const cutoff=Date.now()-windowDays*86400000;
+  const visible=allFiles.filter(f=>f.ts>=cutoff);
+  for(const f of visible){
+    if(loaded[f.name]===undefined){
+      setStatus("lädt Fahrten … ("+(visible.filter(x=>loaded[x.name]!==undefined).length)+"/"+visible.length+")");
+      try{ loaded[f.name]=rowFrom(JSON.parse(await ghApi(CFG, CFG.path+"/"+f.name.split("/").map(encodeURIComponent).join("/"), true))); }
+      catch(e){ loaded[f.name]=null; }
+    }
+  }
+  const rows=visible.map(f=>loaded[f.name]).filter(Boolean).sort((a,b)=>b.ts-a.ts);
+  const fail=visible.filter(f=>loaded[f.name]===null).length;
+  $("body").innerHTML=rows.map(r=>`<tr>${rowCells(r)}</tr>`).join("");
+  renderSummary(rows);
+  const older=allFiles.some(f=>f.ts<cutoff);
+  $("more").style.display=older?"":"none";
+  $("more").textContent="Mehr laden · weitere 30 Tage";
+  setStatus("");
+  $("note").innerHTML=`${rows.length} Fahrten · letzte ${windowDays} Tage`+(fail?` · ${fail} nicht lesbar`:"")+` · Quelle: ${CFG.owner}/${CFG.repo} &nbsp;·&nbsp; <a id="settoken">Token ändern</a>`;
+  $("settoken").onclick=()=>{ $("tp").style.display="block"; $("tok").value=getCfg().token||""; $("tok").focus(); };
+}
+
+$("more").onclick=async()=>{ windowDays+=30; await render(); };
 $("toksave").onclick=()=>{ const v=$("tok").value.trim(); if(v){ setToken(v); load(); } };
 $("tok").addEventListener("keydown",e=>{ if(e.key==="Enter"){ const v=$("tok").value.trim(); if(v){ setToken(v); load(); } }});
 load();
