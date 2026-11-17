@@ -159,7 +159,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.9";  // Kopplungs-Diagnose: zeigt Anzahl gespeicherter Geräte beim Verbinden
+const APP_VERSION = "0.2.10";  // Kopplungs-Diagnose II: zeigt den konkreten Fehler des Direktverbindens
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -269,15 +269,15 @@ async function connect(){
   if(!navigator.bluetooth){ setStatus("Dieser Browser kann kein Web-Bluetooth (nur Chrome auf Android/Windows).","err"); return; }
   try{
     // Schnellverbinden: bereits erlaubtes Gerät direkt nehmen (ohne Auswahl-Dialog)
-    let d=null, nGranted=-1;
+    let d=null, nGranted=-1, directErr="";
     if(navigator.bluetooth.getDevices){
       try{ const g=await navigator.bluetooth.getDevices(); nGranted=g.length; d=g.find(x=>/nohrd|bike|rower/i.test(x.name||""))||g[0]||null; }catch(e){ nGranted=-2; }
     }
     if(d){
       setStatus("Verbinde direkt mit "+(d.name||"Bike")+" …");
-      try{ await attach(d); return; }catch(e){ setStatus("Direktverbindung fehlgeschlagen — bitte Gerät wählen …"); }
+      try{ await attach(d); return; }catch(e){ directErr=(e.name||"")+": "+(e.message||""); const f=$("foot"); if(f) f.textContent="direkt→ "+directErr; }
     }
-    setStatus("Geräteauswahl (gespeichert: "+(nGranted===-1?"API fehlt":(nGranted===-2?"Fehler":nGranted))+") …");
+    setStatus("Geräteauswahl (gespeichert "+(nGranted<0?"n/v":nGranted)+") …");
     const picked = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
     await attach(picked);
   }catch(e){ setStatus("Verbindung abgebrochen: "+e.message,"err"); }
