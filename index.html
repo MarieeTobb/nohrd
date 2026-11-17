@@ -12,18 +12,24 @@
   html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);padding:calc(1cm + env(safe-area-inset-top,0px)) 0.6cm calc(1cm + env(safe-area-inset-bottom,0px))}
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .top .cell{background:var(--tile);padding:10px 16px 12px}
-  .lab{font-size:16px;color:#333;font-weight:600;letter-spacing:.01em}
-  .big{font-size:44px;font-weight:700;color:#000;line-height:1;margin-top:4px;white-space:nowrap}
-  .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 6px}
-  .hero{width:100%;max-width:560px;background:var(--tile);border:6px solid #cfccc8;border-radius:120px;padding:10px 16px;text-align:center}
-  .hero .lab{font-size:18px;color:#333;font-weight:600}
-  .hero .num{font-size:64px;font-weight:700;line-height:1;margin-top:2px;color:#000}
-  .hero .num .u{font-size:22px;color:#555;margin-left:6px;font-weight:600}
+  .top .cell{background:var(--tile);padding:8px 16px 10px}
+  .lab{font-size:15px;color:#333;font-weight:600;letter-spacing:.01em}
+  .big{font-size:42px;font-weight:700;color:#000;line-height:1;margin-top:3px;white-space:nowrap}
+  .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 6px}
+  .stack{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .oval{width:100%;background:var(--tile);border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:72px;padding:6px 16px;box-sizing:border-box;text-align:center}
+  #playoval{cursor:pointer;-webkit-user-select:none;user-select:none}
+  #playoval.rec{border-color:#d11}
+  #playsym{font-size:36px;color:#000;line-height:1}
+  .blink{animation:blink 1s steps(1,end) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .hero .lab{font-size:16px;color:#333;font-weight:600}
+  .hero .num{font-size:46px;font-weight:700;line-height:1;margin-top:0;color:#000}
+  .hero .num .u{font-size:19px;color:#555;margin-left:6px;font-weight:600}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:9px 16px 10px;min-height:52px}
-  .cell .val{font-size:40px;font-weight:700;margin-top:2px;color:#000}
-  .cell .val .u{font-size:17px;color:#555;margin-left:4px;font-weight:600}
+  .grid .cell{background:var(--tile);padding:7px 14px 8px;min-height:46px}
+  .cell .val{font-size:34px;font-weight:700;margin-top:1px;color:#000}
+  .cell .val .u{font-size:15px;color:#555;margin-left:4px;font-weight:600}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
   .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
@@ -31,6 +37,7 @@
   .bar button:active{background:#f3f1ee}
   .bar button.stop{background:var(--red);color:#fff;max-width:76px}
   .bar button.go{background:var(--teal);color:#fff}
+  .bar button.conn{background:#2f8a7a;color:#fff}
   .status{padding:10px 20px;font-size:12.5px;color:var(--mut);text-align:center;background:var(--bg);min-height:20px}
   .status.err{color:var(--red)}
   .status.ok{color:var(--teal)}
@@ -68,9 +75,12 @@
   </div>
 
   <div class="mid">
-    <div class="hero">
-      <div class="lab">Straßengeschwindigkeit</div>
-      <div class="num" id="t-speed">–<span class="u">km/h</span></div>
+    <div class="stack">
+      <div class="oval" id="playoval"><div id="playsym">▶</div></div>
+      <div class="oval hero">
+        <div class="lab">Straßengeschwindigkeit</div>
+        <div class="num" id="t-speed">–<span class="u">km/h</span></div>
+      </div>
     </div>
   </div>
 
@@ -88,10 +98,9 @@
 
   <div class="bar">
     <button id="b-connect" class="go">🔗 Verbinden</button>
-    <button id="b-pause">⏸ Pause</button>
-    <button id="b-close">✕ Schließen</button>
     <button id="b-settings">⚙︎</button>
-    <button id="b-stop" class="stop">■</button>
+    <button id="b-close">✕ Schließen</button>
+    <button id="b-stop" class="stop">■ Beenden</button>
   </div>
 
   <!-- Einstellungen -->
@@ -159,7 +168,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.11";  // Stiller Reconnect: wartet per watchAdvertisements aufs Bike-Signal, dann Direktverbindung ohne Auswahl
+const APP_VERSION = "0.2.12";  // Start/Pause als Oval über der Geschwindigkeit (rot bei Aufnahme, Play blinkt bei Pause); Verbinden-Knopf wird WLAN-Symbol
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -180,7 +189,7 @@ let dev=null, bikeChar=null, resRange=null;
 let running=false, paused=false, startedAt=null;
 let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
 let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
-let samples=[], tick=null, wakeLock=null, pendingJson=null;
+let samples=[], tick=null, wakeLock=null, pendingJson=null, connected=false;
 let emaW=null, emaRes=null, emaWpow=null;   // geglättete Anzeigewerte
 const SMOOTH=0.4;                            // Straßentempo/Widerstand (ruhig, kaum Lag)
 const SMOOTH_POW=0.25;                       // Leistung extra ruhig (schwankt sonst zu stark)
@@ -194,6 +203,18 @@ function fmtTime(s){ const m=Math.floor(s/60), se=Math.floor(s%60); return pad(m
 function de(n,d=0){ return (n===null||n===undefined||Number.isNaN(n))?"–":Number(n).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function setStatus(t,cls){ const e=$("status"); e.textContent=t; e.className="status"+(cls?" "+cls:""); }
 function showRec(state){ const p=$("pill"); if(!p) return; if(state==="off"){ p.style.display="none"; return; } p.textContent="●"; p.style.color=(state==="pause")?"#999":"#d11"; p.style.display="block"; }
+function updatePlay(){
+  const ov=$("playoval"), sym=$("playsym"); if(!ov) return;
+  ov.classList.remove("rec"); sym.classList.remove("blink");
+  if(running && !paused){ ov.classList.add("rec"); sym.textContent="⏸"; }
+  else if(running && paused){ sym.textContent="▶"; sym.classList.add("blink"); }
+  else { sym.textContent="▶"; }
+  ov.style.opacity = connected ? "1" : "0.5";
+}
+function playClick(){
+  if(!connected){ connect(); return; }
+  if(!running){ start(); } else { togglePause(); }
+}
 
 // ---------- Straßenmodell: Watt -> v ----------
 function totalMass(){ return (parseFloat(cfg.rider)||85)+(parseFloat(cfg.bike)||8); }
@@ -300,7 +321,7 @@ async function tryDirect(d){
 }
 async function attach(d){
   dev=d;
-  dev.addEventListener("gattserverdisconnected",()=>{ setStatus("Verbindung getrennt.","err"); showRec("off"); });
+  dev.addEventListener("gattserverdisconnected",()=>{ connected=false; bikeChar=null; setStatus("Verbindung getrennt.","err"); showRec("off"); $("b-connect").textContent="🔗 Verbinden"; $("b-connect").classList.remove("conn"); $("b-connect").classList.add("go"); $("b-connect").onclick=connect; updatePlay(); });
   const srv = await dev.gatt.connect();
   const fs = await srv.getPrimaryService(SVC_FTMS);
   try{ const rc=await fs.getCharacteristic(CH_RESRANGE); const rv=await rc.readValue();
@@ -308,8 +329,10 @@ async function attach(d){
   bikeChar = await fs.getCharacteristic(CH_BIKE);
   await bikeChar.startNotifications();
   bikeChar.addEventListener("characteristicvaluechanged",onBike);
-  setStatus("Verbunden mit "+(dev.name||"Bike")+" — tritt los, dann ▶ Start.","ok");
-  $("b-connect").textContent="▶ Start"; $("b-connect").onclick=start;
+  connected=true;
+  setStatus("Verbunden mit "+(dev.name||"Bike")+" — ▶ zum Starten.","ok");
+  $("b-connect").textContent="📶 Verbunden"; $("b-connect").classList.remove("go"); $("b-connect").classList.add("conn"); $("b-connect").onclick=()=>{};
+  updatePlay();
 }
 
 // ---------- Start / Pause / Stop ----------
@@ -317,10 +340,9 @@ async function start(){
   if(!bikeChar){ return connect(); }
   running=true; paused=false; startedAt=new Date();
   elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null;
-  $("b-connect").textContent="läuft"; $("b-connect").classList.remove("go");
   requestWake();
   tick=setInterval(step,1000);
-  setStatus("Aufzeichnung läuft.","ok"); showRec("rec");
+  setStatus("Aufzeichnung läuft.","ok"); showRec("rec"); updatePlay();
 }
 function step(){
   if(!running||paused) return;
@@ -341,16 +363,16 @@ function step(){
     dev_dist_m:last.devDist||0, road_dist_m:Math.round(roadDist), kcal:+energyKJ.toFixed(1), hr:last.hr??null});
   renderLive();
 }
-function togglePause(){ if(!running)return; paused=!paused; $("b-pause").textContent=paused?"▶ Weiter":"⏸ Pause"; showRec(paused?"pause":"rec"); }
+function togglePause(){ if(!running)return; paused=!paused; showRec(paused?"pause":"rec"); updatePlay(); }
 function stop(){
   if(!running){ setStatus("Nichts aufzuzeichnen."); return; }
-  running=false; clearInterval(tick); releaseWake(); showRec("off");
+  running=false; clearInterval(tick); releaseWake(); showRec("off"); updatePlay();
   pendingJson = buildJson();
   const s=pendingJson.summary;
   $("save-sum").textContent = fmtTime(s.duration_s)+" min · "+de(s.road_distance_m/1000,2)+" km · Ø "+de(s.avg_power,0)+" W · "+de(s.kcal,0)+" kcal";
   $("savedlg").showModal();
 }
-function resetConnectBtn(){ $("b-connect").textContent="▶ Start"; $("b-connect").classList.add("go"); }
+function resetConnectBtn(){ showRec("off"); updatePlay(); }
 async function saveRide(){
   $("savedlg").close();
   const j=pendingJson; pendingJson=null;
@@ -485,7 +507,7 @@ function saveSettings(){
 
 // ---------- Verdrahtung ----------
 $("b-connect").onclick=connect;
-$("b-pause").onclick=togglePause;
+$("playoval").onclick=playClick;
 $("b-close").onclick=()=>{ try{ window.close(); }catch(e){} };
 $("b-stop").onclick=stop;
 $("b-settings").onclick=openSettings;
@@ -496,7 +518,7 @@ $("g-edit-btn").onclick=showGhEdit;
 $("save-yes").onclick=saveRide;
 $("save-no").onclick=discardRide;
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
-renderLive(); updateFoot();
+renderLive(); updateFoot(); updatePlay();
 </script>
 </body>
 </html>
