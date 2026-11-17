@@ -10,18 +10,18 @@
   :root{ --bg:#e6e4e2; --tile:#ffffff; --ink:#000000; --mut:#333333; --line:#e0e0e0; --teal:#7fa8a0; --accent:#1F3A4D; --red:#b5564e; }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);padding:1.3cm 0.6cm}
+  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:400;color:#000;font-variant-numeric:tabular-nums;height:100vh;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);padding:calc(1cm + env(safe-area-inset-top,0px)) 0.6cm calc(1cm + env(safe-area-inset-bottom,0px))}
   .top{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
   .top .cell{background:var(--tile);padding:10px 16px 12px}
   .lab{font-size:16px;color:#333;font-weight:600;letter-spacing:.01em}
   .big{font-size:44px;font-weight:700;color:#000;line-height:1;margin-top:4px;white-space:nowrap}
   .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 6px}
-  .hero{width:100%;max-width:560px;background:var(--tile);border:6px solid #cfccc8;border-radius:120px;padding:12px 16px;text-align:center}
+  .hero{width:100%;max-width:560px;background:var(--tile);border:6px solid #cfccc8;border-radius:120px;padding:10px 16px;text-align:center}
   .hero .lab{font-size:18px;color:#333;font-weight:600}
-  .hero .num{font-size:68px;font-weight:700;line-height:1;margin-top:2px;color:#000}
+  .hero .num{font-size:64px;font-weight:700;line-height:1;margin-top:2px;color:#000}
   .hero .num .u{font-size:22px;color:#555;margin-left:6px;font-weight:600}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:9px 16px 10px;min-height:54px}
+  .grid .cell{background:var(--tile);padding:9px 16px 10px;min-height:52px}
   .cell .val{font-size:40px;font-weight:700;margin-top:2px;color:#000}
   .cell .val .u{font-size:17px;color:#555;margin-left:4px;font-weight:600}
   .cell.cal .val{color:#000}
@@ -159,7 +159,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.7";  // Leistung extra geglättet, Schnellverbinden (getDevices), großer Stopp-Dialog, Layout passt auf eine Bildschirmhöhe
+const APP_VERSION = "0.2.8";  // Distanz geglättet, echter 1-cm-Rand via Safe-Area, Tempo-Kachel kompakter
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -311,14 +311,15 @@ function step(){
   elapsed+=1;
   const P = last.power||0;
   energyKJ += P/1000;                 // kJ ≈ kcal
-  const vmps = roadSpeedMps(P);
-  roadDist += vmps;                    // m (1 s)
-  last.roadKmh = vmps*3.6;
   emaW = ema(emaW, P, SMOOTH);
   emaWpow = ema(emaWpow, P, SMOOTH_POW);
   if(last.resPct!=null) emaRes = ema(emaRes, last.resPct, SMOOTH);
-  last.dispW = emaWpow; last.dispRoadKmh = roadSpeedMps(emaW)*3.6; last.dispRes = emaRes;
-  samples.push({t:elapsed, road_kmh:+(vmps*3.6).toFixed(2), dev_kmh:last.speedKmh??null,
+  const vmpsRaw = roadSpeedMps(P);
+  const vmpsSmooth = roadSpeedMps(emaW);
+  roadDist += vmpsSmooth;              // ruhige, geglättete Distanz (Summe bleibt korrekt)
+  last.roadKmh = vmpsRaw*3.6;
+  last.dispW = emaWpow; last.dispRoadKmh = vmpsSmooth*3.6; last.dispRes = emaRes;
+  samples.push({t:elapsed, road_kmh:+(vmpsRaw*3.6).toFixed(2), dev_kmh:last.speedKmh??null,
     cad:last.cadence??null, pow:last.power??null, res_pct:last.resPct!==null?+last.resPct.toFixed(0):null,
     res_raw:last.resRaw??null, grade_pct:+(gradeFraction()*100).toFixed(1),
     dev_dist_m:last.devDist||0, road_dist_m:Math.round(roadDist), kcal:+energyKJ.toFixed(1), hr:last.hr??null});
