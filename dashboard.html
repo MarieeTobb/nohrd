@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nohrd | Bike – Trainingsverlauf</title>
+<meta name="description" content="Trainingsverlauf aus dem nohrd-data-Repo – gelesen direkt aus GitHub.">
+<style>
+  :root{ --navy:#1F3A4D; --ink:#2b2b2b; --mut:#9a9a9a; --line:#e6e6e6; --line2:#f1f1f1; }
+  html,body{background:#fff;margin:0;padding:0}
+  body{font-family:"Helvetica Neue",Arial,sans-serif;font-weight:300;color:var(--ink);font-variant-numeric:tabular-nums}
+  .wrap{max-width:1000px;margin:0 auto;padding:46px 24px 90px}
+  .brand{text-align:center;letter-spacing:.3em;font-size:12px;color:#b5b5b5;text-transform:uppercase;margin-bottom:10px}
+  h1{font-weight:300;letter-spacing:.22em;text-transform:uppercase;color:#8a8a8a;font-size:20px;text-align:center;margin:0 0 30px}
+  .status{text-align:center;color:#9a9a9a;font-size:13px;letter-spacing:.03em;margin:0 0 22px;min-height:18px}
+  .status.err{color:#b33}
+  /* Summenleiste – Entwurf A */
+  #sum:not(:empty){border-top:1px solid var(--navy);border-bottom:1px solid var(--line);padding:22px 0 24px;margin:0 0 40px}
+  #sum .sumhead{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:0 0 18px 20px}
+  #sum .tiles{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0}
+  #sum .tile{flex:1 1 0;min-width:96px;padding:0 20px;text-align:left;position:relative}
+  #sum .tile + .tile::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:1px;background:var(--line)}
+  #sum .num{font-size:26px;font-weight:300;color:var(--navy);line-height:1.05;white-space:nowrap}
+  #sum .num .u{font-size:13px;color:#9fb0bb;margin-left:3px}
+  #sum .lab{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--mut);margin-top:8px;white-space:nowrap}
+  #sum .tile.hero{min-width:168px}
+  #sum .tile.hero .num{font-size:30px}
+  table{width:100%;border-collapse:collapse}
+  th{font-weight:400;text-transform:uppercase;letter-spacing:.07em;font-size:10.5px;color:#a6a6a6;text-align:right;padding:0 12px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th.l,td.l{text-align:left}
+  td{padding:12px;font-size:14px;color:#3a3a3a;text-align:right;border-bottom:1px solid var(--line2);white-space:nowrap}
+  tbody tr:hover{background:#fafafa}
+  td.datum{color:#555}
+  .note{text-align:center;color:#bdbdbd;font-size:11px;margin-top:26px;letter-spacing:.03em}
+  .bar{text-align:center;margin:0 0 26px}
+  .bar button{padding:8px 18px;background:#fff;border:1px solid #ddd;border-radius:8px;color:#444;font-size:13px;cursor:pointer;font-family:inherit;margin:0 4px}
+  .bar button:hover{border-color:var(--navy);color:var(--navy)}
+  #tp{max-width:560px;margin:10px auto 0;border:1px solid var(--line);padding:22px 24px;text-align:center;display:none}
+  #tp p{color:#777;font-size:13px;margin:0 0 14px;line-height:1.5}
+  #tp input{width:100%;box-sizing:border-box;padding:10px 12px;font-size:13px;border:1px solid #ccc;font-family:monospace}
+  #tp button{margin-top:14px;padding:9px 22px;background:var(--navy);color:#fff;border:0;letter-spacing:.08em;text-transform:uppercase;font-size:12px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Nohrd&nbsp;|&nbsp;Bike</div>
+  <h1>Trainingsverlauf</h1>
+  <div class="status" id="status">lädt …</div>
+  <div class="bar"><button id="reload">Neu laden</button><button id="settoken">Token ändern</button></div>
+  <div id="tp">
+    <p>GitHub-Token (Lesezugriff auf <b>nohrd-data</b>) eingeben.<br>Du kannst denselben fine-grained Token wie in der Live-App verwenden.</p>
+    <input id="tok" type="password" spellcheck="false" placeholder="github_pat_…" autocomplete="off">
+    <div><button id="toksave">Speichern &amp; laden</button></div>
+  </div>
+  <div id="sum"></div>
+  <table id="tbl"><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+"use strict";
+const DEF = { owner:"MarieeTobb", repo:"nohrd-data", branch:"main", path:"data" };
+
+// Token/Config: teilt sich den Speicher mit der Live-App (gleicher Origin) -> "nohrd_gh"
+function getCfg(){
+  let g={}; try{ g=JSON.parse(localStorage.getItem("nohrd_gh")||"{}")||{}; }catch(e){}
+  return { owner:g.owner||DEF.owner, repo:g.repo||DEF.repo, branch:g.branch||DEF.branch, path:g.path||DEF.path, token:g.token||"" };
+}
+function setToken(t){
+  let g={}; try{ g=JSON.parse(localStorage.getItem("nohrd_gh")||"{}")||{}; }catch(e){}
+  g.owner=g.owner||DEF.owner; g.repo=g.repo||DEF.repo; g.branch=g.branch||DEF.branch; g.path=g.path||DEF.path; g.token=(t||"").trim();
+  try{ localStorage.setItem("nohrd_gh", JSON.stringify(g)); }catch(e){}
+}
+
+const $=id=>document.getElementById(id);
+const de=(n,d=0)=>(n===null||n===undefined||Number.isNaN(n))?"–":Number(n).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const pad=x=>String(x).padStart(2,"0");
+const fmtKm=v=>(v===null||v===undefined)?"–":((Math.abs(v)<10?"0":"")+de(v,2));
+const fmtMMSS=min=>{ if(min===null||min===undefined)return "–"; const s=Math.round(min*60); return pad(Math.floor(s/60))+":"+pad(s%60); };
+const WD={Sun:"So",Mon:"Mo",Tue:"Di",Wed:"Mi",Thu:"Do",Fri:"Fr",Sat:"Sa"};
+function berlin(iso){ const dt=new Date(iso);
+  const dstr=dt.toLocaleString("de-DE",{timeZone:"Europe/Berlin",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).replace(",","");
+  const wd=dt.toLocaleString("en-US",{timeZone:"Europe/Berlin",weekday:"short"});
+  return { dstr, wd:WD[wd]||wd, ts:dt.getTime() };
+}
+function setStatus(t,err){ const e=$("status"); e.textContent=t||""; e.className="status"+(err?" err":""); }
+
+async function ghApi(cfg, subpath, raw){
+  const url="https://api.github.com/repos/"+cfg.owner+"/"+cfg.repo+"/contents/"+subpath+"?ref="+encodeURIComponent(cfg.branch);
+  const r=await fetch(url,{ headers:{ "Authorization":"Bearer "+cfg.token, "Accept": raw?"application/vnd.github.raw":"application/vnd.github+json" }});
+  if(!r.ok){ let m=""; try{ m=(await r.json()).message||""; }catch(e){} throw new Error("HTTP "+r.status+(m?" "+m:"")); }
+  return raw ? r.text() : r.json();
+}
+
+const COLS=[
+  {t:"Datum / Uhrzeit",l:1},{t:"Tag",l:1},{t:"Dauer"},{t:"Distanz (km)"},
+  {t:"Ø km/h"},{t:"Max km/h"},{t:"Ø Watt"},{t:"Max Watt"},{t:"Ø U/min"},{t:"Max U/min"},{t:"Widerstand"},{t:"kcal"}
+];
+function rowFrom(j){
+  const s=j.summary||{};
+  const b=berlin(j.started_iso||j.ended_iso);
+  return { ts:b.ts, datum:b.dstr, tag:b.wd,
+    min:(s.duration_s||0)/60, km:(s.road_distance_m||0)/1000,
+    kmh:s.avg_road_kmh, maxkmh:s.max_road_kmh, avgW:s.avg_power, maxW:s.max_power,
+    avgC:s.avg_cadence, maxC:s.max_cadence, res:s.avg_resistance_pct, kcal:s.kcal };
+}
+function rowCells(r){
+  const c=(v,cls="")=>`<td class="${cls}">${v}</td>`;
+  return c(r.datum,"l datum")+c(r.tag,"l")+c(fmtMMSS(r.min))+c(fmtKm(r.km))+c(de(r.kmh,2))+c(de(r.maxkmh,2))+
+    c(de(r.avgW,0))+c(de(r.maxW,0))+c(de(r.avgC,0))+c(de(r.maxC,0))+
+    c(r.res!=null?de(r.res,0)+" %":"–")+c(de(r.kcal,0));
+}
+function renderSummary(rows){
+  const el=$("sum"); const cut=Date.now()-30*24*3600*1000;
+  const r=rows.filter(x=>x.ts>=cut);
+  if(!r.length){ el.innerHTML=""; return; }
+  const sum=k=>r.reduce((a,x)=>a+(x[k]||0),0);
+  const avg=arr=>{const a=arr.filter(v=>v!=null); return a.length?a.reduce((s,x)=>s+x,0)/a.length:null;};
+  const kmh=avg(r.map(x=>x.kmh)), avgW=avg(r.map(x=>x.avgW));
+  const maxWv=r.map(x=>x.maxW).filter(v=>v!=null); const maxW=maxWv.length?Math.max(...maxWv):null;
+  const tm=sum("min"), H=Math.floor(tm/60), M=Math.round(tm%60);
+  const tile=(num,lab,cls="")=>`<div class="tile ${cls}"><div class="num">${num}</div><div class="lab">${lab}</div></div>`;
+  el.innerHTML=`<div class="sumhead">Letzte 30 Tage · ${r.length} Fahrten</div><div class="tiles">`+
+    tile(`${H}<span class="u">Std</span> ${pad(M)}<span class="u">Min</span>`,"Gesamtzeit","hero")+
+    tile(`${de(sum("km"),2)}<span class="u">km</span>`,"Distanz gesamt")+
+    tile(kmh==null?"–":de(kmh,2),"Ø km/h")+
+    tile(avgW==null?"–":de(avgW,0),"Ø Watt")+
+    tile(maxW==null?"–":de(maxW,0),"Max Watt")+
+    tile(de(sum("kcal"),0),"kcal")+`</div>`;
+}
+
+async function load(){
+  $("tp").style.display="none";
+  const cfg=getCfg();
+  if(!cfg.token){ setStatus("Kein Token gespeichert.","err"); $("tp").style.display="block"; return; }
+  $("head").innerHTML=COLS.map(c=>`<th class="${c.l?"l":""}">${c.t}</th>`).join("");
+  setStatus("lädt Fahrten aus "+cfg.owner+"/"+cfg.repo+" …");
+  let files;
+  try{ files=await ghApi(cfg, cfg.path, false); }
+  catch(e){ setStatus("Fehler beim Laden der Liste: "+e.message,"err"); if(/401|403|404/.test(e.message)) $("tp").style.display="block"; return; }
+  const names=(Array.isArray(files)?files:[]).map(f=>f.name).filter(n=>/\.json$/i.test(n) && !/^\.pwa-test/.test(n));
+  if(!names.length){ setStatus("Noch keine Fahrten im Repo.","err"); $("body").innerHTML=""; $("sum").innerHTML=""; return; }
+  const rows=[]; let ok=0, fail=0;
+  for(const n of names){
+    try{ const txt=await ghApi(cfg, cfg.path+"/"+n.split("/").map(encodeURIComponent).join("/"), true);
+      rows.push(rowFrom(JSON.parse(txt))); ok++; }
+    catch(e){ fail++; }
+    setStatus("lädt … "+(ok+fail)+"/"+names.length);
+  }
+  rows.sort((a,b)=>b.ts-a.ts);
+  $("body").innerHTML=rows.map(r=>`<tr>${rowCells(r)}</tr>`).join("");
+  renderSummary(rows);
+  setStatus("");
+  $("note").textContent=`${rows.length} Fahrten`+(fail?` · ${fail} nicht lesbar`:"")+` · Quelle: ${cfg.owner}/${cfg.repo} · aktualisiert ${new Date().toLocaleString("de-DE",{hour:"2-digit",minute:"2-digit"})}`;
+}
+
+$("reload").onclick=load;
+$("settoken").onclick=()=>{ $("tp").style.display="block"; $("tok").value=getCfg().token||""; $("tok").focus(); };
+$("toksave").onclick=()=>{ const v=$("tok").value.trim(); if(v){ setToken(v); load(); } };
+$("tok").addEventListener("keydown",e=>{ if(e.key==="Enter"){ const v=$("tok").value.trim(); if(v){ setToken(v); load(); } }});
+load();
+</script>
+</body>
+</html>
