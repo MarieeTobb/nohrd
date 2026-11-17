@@ -159,7 +159,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.10";  // Kopplungs-Diagnose II: zeigt den konkreten Fehler des Direktverbindens
+const APP_VERSION = "0.2.11";  // Stiller Reconnect: wartet per watchAdvertisements aufs Bike-Signal, dann Direktverbindung ohne Auswahl
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -274,13 +274,29 @@ async function connect(){
       try{ const g=await navigator.bluetooth.getDevices(); nGranted=g.length; d=g.find(x=>/nohrd|bike|rower/i.test(x.name||""))||g[0]||null; }catch(e){ nGranted=-2; }
     }
     if(d){
-      setStatus("Verbinde direkt mit "+(d.name||"Bike")+" …");
-      try{ await attach(d); return; }catch(e){ directErr=(e.name||"")+": "+(e.message||""); const f=$("foot"); if(f) f.textContent="direkt→ "+directErr; }
+      setStatus("Verbinde direkt mit "+(d.name||"Bike")+" … (warte auf Signal)");
+      try{ await tryDirect(d); return; }catch(e){ directErr=(e.name||"")+": "+(e.message||""); const f=$("foot"); if(f) f.textContent="direkt→ "+directErr; }
     }
     setStatus("Geräteauswahl (gespeichert "+(nGranted<0?"n/v":nGranted)+") …");
     const picked = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
     await attach(picked);
   }catch(e){ setStatus("Verbindung abgebrochen: "+e.message,"err"); }
+}
+async function tryDirect(d){
+  // Schon verbunden? direkt weiter.
+  if(d.gatt && d.gatt.connected){ await attach(d); return; }
+  // Erst aufs Funksignal warten (bestätigt "in Reichweite"), dann verbinden – ohne Auswahl-Dialog.
+  if(d.watchAdvertisements){
+    await new Promise((resolve,reject)=>{
+      const ac=new AbortController(); let done=false;
+      const finish=(fn,arg)=>{ if(done) return; done=true; clearTimeout(to); try{ac.abort();}catch(e){} fn(arg); };
+      const onAdv=()=>finish(resolve);
+      const to=setTimeout(()=>{ d.removeEventListener('advertisementreceived',onAdv); finish(reject,new Error("Kein Signal (10 s) – Bike wach / am Treten?")); },10000);
+      d.addEventListener('advertisementreceived',onAdv,{once:true});
+      d.watchAdvertisements({signal:ac.signal}).catch(e=>finish(reject,e));
+    });
+  }
+  await attach(d);
 }
 async function attach(d){
   dev=d;
