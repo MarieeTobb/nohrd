@@ -17,7 +17,7 @@
   .big{font-size:38px;font-weight:300;color:#2b2b2b;line-height:1;margin-top:2px;white-space:nowrap}
   .mid{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:4px 6px}
   .stack{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;gap:6px}
-  .oval{width:100%;background:#fff;border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:86px;padding:4px 16px;box-sizing:border-box;text-align:center}
+  .oval{width:100%;background:#fff;border:5px solid #cfccc8;border-radius:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;height:82px;padding:4px 16px;box-sizing:border-box;text-align:center}
   #playoval{cursor:pointer;-webkit-user-select:none;user-select:none}
   #playoval.rec{border-color:#d11}
   #playsym{display:flex;align-items:center;justify-content:center;height:100%}
@@ -30,21 +30,23 @@
   .hero .lab{font-size:16px;color:#333;font-weight:600}
   .hero .num{font-size:46px;font-weight:300;line-height:1;margin-top:0;color:#2b2b2b}
   .hero .num .u{font-size:19px;color:#9fb0bb;margin-left:6px;font-weight:400}
-  .oval.goal{height:40px}
   #goaltext{font-size:17px;color:#2b2b2b;font-weight:300}
   #goaltext.empty{color:#9a9a9a}
-  .oval.prog{height:42px;gap:8px;padding:8px 20px}
-  .pbar{width:100%;height:11px;background:#ececec;border-radius:6px;overflow:hidden}
-  .pfill{height:100%;width:0;border-radius:6px;transition:width .5s ease, background-color .3s}
-  #pfillA{background:#cfccc8}
+  .oval.prog{gap:12px;padding:10px 24px}
+  .pbar{width:100%;height:22px;background:#efeeec;border-radius:11px;overflow:hidden}
+  .pfill{height:100%;width:0;border-radius:11px;transition:width .5s ease, background-color .3s}
+  #pfillA{background:#c2bdb6}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:7px 12px;border:1px solid #ddd;border-radius:16px;background:#f6f6f6;font-size:13px;color:#333;cursor:pointer;font-family:inherit}
+  .chip:active{background:#ececec}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--line)}
-  .grid .cell{background:var(--tile);padding:5px 14px 6px;min-height:38px}
-  .cell .val{font-size:28px;font-weight:300;margin-top:1px;color:#2b2b2b}
+  .grid .cell{background:var(--tile);padding:4px 14px 5px;min-height:34px}
+  .cell .val{font-size:27px;font-weight:300;margin-top:1px;color:#2b2b2b}
   .cell .val .u{font-size:14px;color:#9fb0bb;margin-left:4px;font-weight:400}
   .cell.cal .val{color:#000}
   .muted .val{color:#c9c9c9}
   .bar{display:flex;gap:2px;background:var(--line);border-top:2px solid var(--line)}
-  .bar button{flex:1;background:var(--tile);border:0;padding:12px 8px;font-size:16px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+  .bar button{flex:1;background:var(--tile);border:0;padding:10px 8px;font-size:16px;font-weight:600;color:#000;font-family:inherit;letter-spacing:.02em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
   .bar button:active{background:#f3f1ee}
   .bar button.stop{background:var(--red);color:#fff;max-width:76px}
   .bar button.go{background:var(--teal);color:#fff}
@@ -186,6 +188,7 @@
   <dialog id="goaldlg">
     <div class="dh">Trainingsziel</div>
     <div class="db">
+      <div id="goal-hist" class="chips"></div>
       <label>Ziel A — Dauer oder Strecke</label>
       <div class="row">
         <div><select id="ga-metric"><option value="time">Zeit (Min)</option><option value="km">Strecke (km)</option></select></div>
@@ -196,14 +199,14 @@
         <div><select id="gb-metric"><option value="kcal">Kalorien (kcal)</option><option value="km">Strecke (km)</option><option value="work">Arbeit (kJ)</option></select></div>
         <div><input id="gb-val" type="number" step="1" inputmode="decimal" placeholder="1000"></div>
       </div>
-      <div class="hint">Beispiel: 60 Min + 1000 kcal. Der B-Balken wird <b>grün</b>, wenn das Ziel bei der aktuellen 60-Sekunden-Leistung ~genau erreicht wird, <b>rot</b> wenn nicht, <b>orange</b> bei Übertreffen.</div>
+      <div class="hint">Beispiel: 60 Min + 1000 kcal. Der B-Balken wird <b>grün</b>, wenn das Ziel bei der aktuellen 60-Sekunden-Leistung ~genau erreicht wird, <b>rot</b> wenn nicht, <b>gelb</b> bei Übertreffen.</div>
     </div>
     <div class="df"><button class="ghost" id="goal-del">Ziel löschen</button><button class="ghost" id="goal-cancel">Abbrechen</button><button class="primary" id="goal-save">Speichern</button></div>
   </dialog>
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.14";  // Trainingsziel (A: Zeit/km + B: km/kJ/kcal) mit Ziel-Oval und Fortschritts-Oval (zweiteiliger Balken, B-Farbe per 60-s-Prognose rot/grün/orange)
+const APP_VERSION = "0.2.15";  // Alle Ovale gleich hoch, dickere Balken, roter Punkt weg, Übertreffen=helles Gelb, Ziel-Verlauf als Chips
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -240,7 +243,7 @@ const pad = n => String(n).padStart(2,"0");
 function fmtTime(s){ const m=Math.floor(s/60), se=Math.floor(s%60); return pad(m)+":"+pad(se); }
 function de(n,d=0){ return (n===null||n===undefined||Number.isNaN(n))?"–":Number(n).toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function setStatus(t,cls){ const e=$("status"); e.textContent=t; e.className="status"+(cls?" "+cls:""); }
-function showRec(state){ const p=$("pill"); if(!p) return; if(state==="off"){ p.style.display="none"; return; } p.textContent="●"; p.style.color=(state==="pause")?"#999":"#d11"; p.style.display="block"; }
+function showRec(){ const p=$("pill"); if(p) p.style.display="none"; }
 function updatePlay(){
   const ov=$("playoval"), sym=$("playsym"); if(!ov) return;
   ov.classList.remove("rec"); sym.classList.remove("blink");
@@ -256,11 +259,11 @@ function playClick(){
 
 // ---------- Trainingsziel ----------
 function gNum(n){ return (n==null)?"":Number(n).toLocaleString("de-DE",{maximumFractionDigits:(Number.isInteger(n)?0:1)}); }
-function goalText(){
-  if(!goal) return null;
-  const a = goal.aMetric==="time" ? gNum(goal.aVal)+" Min" : gNum(goal.aVal)+" km";
-  const bU = goal.bMetric==="km"?"km":(goal.bMetric==="work"?"kJ":"kcal");
-  return a+" · "+gNum(goal.bVal)+" "+bU;
+function goalText(g){
+  g=g||goal; if(!g) return null;
+  const a = g.aMetric==="time" ? gNum(g.aVal)+" Min" : gNum(g.aVal)+" km";
+  const bU = g.bMetric==="km"?"km":(g.bMetric==="work"?"kJ":"kcal");
+  return a+" · "+gNum(g.bVal)+" "+bU;
 }
 function renderGoal(){
   const t=$("goaltext"); if(!t) return;
@@ -298,7 +301,7 @@ function goalProgress(){
   }
   return {aFrac,bFrac,color};
 }
-const PCOL={red:"#d9534f",green:"#4a9d5b",orange:"#e0922f",grey:"#cfccc8"};
+const PCOL={red:"#d9534f",green:"#4a9d5b",orange:"#ffd633",grey:"#cfccc8"};
 function updateProg(){
   if(!goal){ return; }
   const p=goalProgress(); if(!p) return;
@@ -311,15 +314,26 @@ function openGoalDlg(){
   const g=goal||{};
   $("ga-metric").value=g.aMetric||"time"; $("ga-val").value=g.aVal||"";
   $("gb-metric").value=g.bMetric||"kcal"; $("gb-val").value=g.bVal||"";
+  renderHist();
   $("goaldlg").showModal();
 }
 function saveGoalFromDlg(){
   const av=parseFloat($("ga-val").value), bv=parseFloat($("gb-val").value);
   if(!(av>0)||!(bv>0)){ return; }
   goal={ aMetric:$("ga-metric").value, aVal:av, bMetric:$("gb-metric").value, bVal:bv };
-  saveGoalLS(goal); $("goaldlg").close(); renderGoal();
+  saveGoalLS(goal); addHist(goal); $("goaldlg").close(); renderGoal();
 }
 function deleteGoal(){ goal=null; saveGoalLS(null); $("goaldlg").close(); renderGoal(); }
+function loadHist(){ try{ return JSON.parse(localStorage.getItem("nohrd_goal_hist")||"[]")||[]; }catch(e){ return []; } }
+function addHist(g){ let h=loadHist().filter(x=>JSON.stringify(x)!==JSON.stringify(g)); h.unshift(g); try{ localStorage.setItem("nohrd_goal_hist", JSON.stringify(h.slice(0,8))); }catch(e){} }
+function renderHist(){
+  const c=$("goal-hist"); if(!c) return;
+  const h=loadHist();
+  if(!h.length){ c.innerHTML=""; return; }
+  c.innerHTML='<div class="hint" style="width:100%;margin:0 0 4px">Zuletzt verwendet (tippen zum Übernehmen):</div>'+
+    h.map((g,i)=>`<button type="button" class="chip" data-i="${i}">${goalText(g)}</button>`).join("");
+  c.querySelectorAll(".chip").forEach(btn=>btn.onclick=()=>{ const g=loadHist()[+btn.dataset.i]; if(g){ $("ga-metric").value=g.aMetric; $("ga-val").value=g.aVal; $("gb-metric").value=g.bMetric; $("gb-val").value=g.bVal; } });
+}
 
 // ---------- Straßenmodell: Watt -> v ----------
 function totalMass(){ return (parseFloat(cfg.rider)||85)+(parseFloat(cfg.bike)||8); }
