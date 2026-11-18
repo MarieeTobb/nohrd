@@ -214,7 +214,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.21";  // Ziel-Farbe nachjustiert: engeres Gruen-Band (0,96-1,04) + Hysterese gegen Flackern; Ziel wird in die JSON gespeichert
+const APP_VERSION = "0.2.22";  // Automatische Wiederverbindung: selbst-stromversorgtes Bike trennt beim Treten-Stopp; App verbindet beim Antreten selbststaendig neu, Lauf laeuft weiter, keine Phantom-Werte in der Funkluecke
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -241,6 +241,7 @@ let running=false, paused=false, startedAt=null;
 let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
 let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
 let samples=[], tick=null, wakeLock=null, pendingJson=null, connected=false;
+let reconnecting=false, userStopped=false;   // Auto-Wiederverbindung
 let emaW=null, emaRes=null, emaWpow=null;   // geglättete Anzeigewerte
 const SMOOTH=0.4;                            // Straßentempo/Widerstand (ruhig, kaum Lag)
 const SMOOTH_POW=0.25;                       // Leistung extra ruhig (schwankt sonst zu stark)
@@ -263,7 +264,7 @@ function updatePlay(){
   else { sym.innerHTML='<span class="tri dim"></span>'; }
 }
 function playClick(){
-  if(!connected){ connect(); return; }
+  if(!connected){ if(reconnecting){ setStatus("Verbinde neu – einen Moment …"); } else { connect(); } return; }
   if(!running){ start(); } else { togglePause(); }
 }
 
@@ -479,9 +480,8 @@ async function tryDirect(d){
   }
   await attach(d);
 }
-async function attach(d){
-  dev=d;
-  dev.addEventListener("gattserverdisconnected",()=>{ connected=false; bikeChar=null; setStatus("Verbindung getrennt.","err"); showRec("off"); $("b-connect").classList.remove("conn"); $("b-connect").onclick=connect; updatePlay(); });
+async function gattBind(){
+  // Nur GATT verbinden + Notifications abonnieren (wird von attach UND Auto-Reconnect genutzt)
   const srv = await dev.gatt.connect();
   const fs = await srv.getPrimaryService(SVC_FTMS);
   try{ const rc=await fs.getCharacteristic(CH_RESRANGE); const rv=await rc.readValue();
@@ -489,15 +489,49 @@ async function attach(d){
   bikeChar = await fs.getCharacteristic(CH_BIKE);
   await bikeChar.startNotifications();
   bikeChar.addEventListener("characteristicvaluechanged",onBike);
-  connected=true;
+  connected=true; $("b-connect").classList.add("conn"); updatePlay();
+}
+async function attach(d){
+  dev=d; userStopped=false;
+  dev.addEventListener("gattserverdisconnected", onDisconnect);  // gleiche Referenz -> kein Duplikat
+  await gattBind();
   setStatus("Verbunden mit "+(dev.name||"Bike")+" — ▶ zum Starten.","ok");
-  $("b-connect").classList.add("conn"); $("b-connect").onclick=()=>{};
-  updatePlay();
+  $("b-connect").onclick=()=>{};
+}
+function onDisconnect(){
+  connected=false; bikeChar=null; last.power=0; last.cadence=0;   // keine Phantom-Werte waehrend der Funklücke
+  $("b-connect").classList.remove("conn"); updatePlay(); renderLive();
+  if(userStopped){ setStatus("Verbindung getrennt.","err"); $("b-connect").onclick=connect; return; }
+  autoReconnect();   // selbst-stromversorgtes Bike: beim Antreten kommt das Signal zurueck
+}
+async function autoReconnect(){
+  if(reconnecting || !dev) return; reconnecting=true;
+  while(!userStopped && dev && !(dev.gatt && dev.gatt.connected)){
+    setStatus(running ? "Funk weg – tritt weiter, verbinde neu …" : "Verbindung verloren – verbinde beim Antreten neu …","err");
+    try{
+      if(dev.watchAdvertisements){
+        await new Promise((res,rej)=>{
+          const ac=new AbortController(); let done=false;
+          const fin=(f,a)=>{ if(done)return; done=true; clearTimeout(to); try{ac.abort();}catch(e){} f(a); };
+          const onAdv=()=>fin(res);
+          const to=setTimeout(()=>{ try{dev.removeEventListener('advertisementreceived',onAdv);}catch(e){} fin(rej,new Error("warte")); }, 30000);
+          dev.addEventListener('advertisementreceived',onAdv,{once:true});
+          dev.watchAdvertisements({signal:ac.signal}).catch(e=>fin(rej,e));
+        });
+      }
+      if(userStopped) break;
+      await gattBind();
+      setStatus(running ? "Wieder verbunden – weiter." : "Wieder verbunden.","ok");
+      break;
+    }catch(e){ await new Promise(r=>setTimeout(r,1500)); }
+  }
+  reconnecting=false;
 }
 
 // ---------- Start / Pause / Stop ----------
 async function start(){
-  if(!bikeChar){ return connect(); }
+  if(!bikeChar){ if(reconnecting){ setStatus("Verbinde neu – einen Moment …"); return; } return connect(); }
+  userStopped=false;
   running=true; paused=false; startedAt=new Date();
   elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null; goalHit=false; goalColor="green";
   requestWake();
@@ -527,6 +561,7 @@ function step(){
 function togglePause(){ if(!running)return; paused=!paused; showRec(paused?"pause":"rec"); updatePlay(); }
 function stop(){
   if(!running){ setStatus("Nichts aufzuzeichnen."); return; }
+  userStopped=true;   // bewusstes Beenden -> keine Auto-Wiederverbindung
   running=false; clearInterval(tick); releaseWake(); showRec("off"); updatePlay();
   pendingJson = buildJson();
   const s=pendingJson.summary;
