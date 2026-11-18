@@ -160,6 +160,9 @@
         <div><label>Widerstand roh – zu (100 %)</label><input id="s-resmax" type="number" step="1" value="199"></div>
       </div>
       <div class="hint">Watt werden am Rad gemessen; daraus rechnet die Seite über das Fahrphysik-Modell die realistische Straßengeschwindigkeit. Gewicht wirkt nur hier (v. a. am Berg), nicht auf die Kalorien.</div>
+      <label style="margin-top:16px;display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="s-keepalive" style="width:auto;margin:0"> Bluetooth aktiv halten (Versuch)</label>
+      <div class="hint">Schickt bei bestehender Verbindung alle 2 s eine Lese-Anfrage, um die Firmware-Abschaltung des Bike-Funkmoduls bei Stillstand zu verzögern. Wirkung ist firmwareabhängig – zum Vergleichen aus-/einschalten.</div>
+
       <label style="margin-top:18px">GitHub-Speicher – Fahrten dauerhaft sichern</label>
       <div id="gh-summary" style="display:none">
         <div class="hint" id="gh-sum-text" style="margin-top:2px"></div>
@@ -214,7 +217,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.22";  // Automatische Wiederverbindung: selbst-stromversorgtes Bike trennt beim Treten-Stopp; App verbindet beim Antreten selbststaendig neu, Lauf laeuft weiter, keine Phantom-Werte in der Funkluecke
+const APP_VERSION = "0.2.23";  // Keep-Alive-Versuch: haelt die BLE-Verbindung bei Stillstand per Lese-Anfrage alle 2s aktiv (umschaltbar in Einstellungen), um die Firmware-Abschaltung des Bike-Moduls zu verzoegern
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -222,7 +225,7 @@ const CH_BIKE    = 0x2AD2;   // Indoor Bike Data (notify)
 const CH_RESRANGE= 0x2AD6;   // Supported Resistance Level Range (read)
 
 // ---------- Einstellungen ----------
-const DEFAULTS = {rider:85,bike:8,cda:0.32,crr:0.004,rho:1.225,grademode:"res",maxgrade:8,resmin:0,resmax:199};
+const DEFAULTS = {rider:85,bike:8,cda:0.32,crr:0.004,rho:1.225,grademode:"res",maxgrade:8,resmin:0,resmax:199,keepalive:true};
 function loadCfg(){ try{return Object.assign({},DEFAULTS,JSON.parse(localStorage.getItem("nohrd_live_cfg")||"{}"));}catch(e){return {...DEFAULTS};} }
 function saveCfg(c){ try{localStorage.setItem("nohrd_live_cfg",JSON.stringify(c));}catch(e){} }
 let cfg = loadCfg();
@@ -242,6 +245,7 @@ let elapsed=0, energyKJ=0, roadDist=0;      // s, kJ(~kcal), m
 let last={speedKmh:null,cadence:null,power:null,resPct:null,resRaw:null,devDist:0,hr:null};
 let samples=[], tick=null, wakeLock=null, pendingJson=null, connected=false;
 let reconnecting=false, userStopped=false;   // Auto-Wiederverbindung
+let resChar=null, kaTimer=null;              // Keep-Alive (Wachhalten der BLE-Verbindung)
 let emaW=null, emaRes=null, emaWpow=null;   // geglättete Anzeigewerte
 const SMOOTH=0.4;                            // Straßentempo/Widerstand (ruhig, kaum Lag)
 const SMOOTH_POW=0.25;                       // Leistung extra ruhig (schwankt sonst zu stark)
@@ -484,13 +488,24 @@ async function gattBind(){
   // Nur GATT verbinden + Notifications abonnieren (wird von attach UND Auto-Reconnect genutzt)
   const srv = await dev.gatt.connect();
   const fs = await srv.getPrimaryService(SVC_FTMS);
-  try{ const rc=await fs.getCharacteristic(CH_RESRANGE); const rv=await rc.readValue();
-    resRange={min:rv.getInt16(0,true),max:rv.getInt16(2,true),inc:rv.getUint16(4,true)}; }catch(e){ resRange=null; }
+  try{ resChar = await fs.getCharacteristic(CH_RESRANGE); const rv=await resChar.readValue();
+    resRange={min:rv.getInt16(0,true),max:rv.getInt16(2,true),inc:rv.getUint16(4,true)}; }catch(e){ resChar=null; resRange=null; }
   bikeChar = await fs.getCharacteristic(CH_BIKE);
   await bikeChar.startNotifications();
   bikeChar.addEventListener("characteristicvaluechanged",onBike);
   connected=true; $("b-connect").classList.add("conn"); updatePlay();
+  startKeepAlive();
 }
+// Hält die BLE-Verbindung bei Stillstand durch regelmäßige Lese-Anfragen aktiv,
+// um die Firmware-Abschaltung des Bike-Funkmoduls zu verzögern (firmwareabhängig).
+function startKeepAlive(){
+  clearInterval(kaTimer);
+  kaTimer=setInterval(async ()=>{
+    if(!cfg.keepalive || !connected || !dev || !dev.gatt || !dev.gatt.connected || !resChar) return;
+    try{ await resChar.readValue(); }catch(e){}
+  }, 2000);
+}
+function stopKeepAlive(){ clearInterval(kaTimer); kaTimer=null; }
 async function attach(d){
   dev=d; userStopped=false;
   dev.addEventListener("gattserverdisconnected", onDisconnect);  // gleiche Referenz -> kein Duplikat
@@ -499,7 +514,7 @@ async function attach(d){
   $("b-connect").onclick=()=>{};
 }
 function onDisconnect(){
-  connected=false; bikeChar=null; last.power=0; last.cadence=0;   // keine Phantom-Werte waehrend der Funklücke
+  connected=false; bikeChar=null; resChar=null; stopKeepAlive(); last.power=0; last.cadence=0;   // keine Phantom-Werte waehrend der Funklücke
   $("b-connect").classList.remove("conn"); updatePlay(); renderLive();
   if(userStopped){ setStatus("Verbindung getrennt.","err"); $("b-connect").onclick=connect; return; }
   autoReconnect();   // selbst-stromversorgtes Bike: beim Antreten kommt das Signal zurueck
@@ -686,14 +701,16 @@ function openSettings(){
   $("s-rider").value=cfg.rider; $("s-bike").value=cfg.bike; $("s-cda").value=cfg.cda;
   $("s-crr").value=cfg.crr; $("s-rho").value=cfg.rho; $("s-grademode").value=cfg.grademode; $("s-maxgrade").value=cfg.maxgrade;
   $("s-resmin").value=cfg.resmin; $("s-resmax").value=cfg.resmax;
+  $("s-keepalive").checked = cfg.keepalive!==false;
   if(ghConfigured()){ showGhSummary(); } else { showGhEdit(); }
   $("dlg").showModal();
 }
 function saveSettings(){
   cfg={ rider:+$("s-rider").value, bike:+$("s-bike").value, cda:+$("s-cda").value, crr:+$("s-crr").value,
         rho:+$("s-rho").value, grademode:$("s-grademode").value, maxgrade:+$("s-maxgrade").value,
-        resmin:+$("s-resmin").value, resmax:+$("s-resmax").value };
+        resmin:+$("s-resmin").value, resmax:+$("s-resmax").value, keepalive:$("s-keepalive").checked };
   saveCfg(cfg);
+  if(cfg.keepalive && connected){ startKeepAlive(); } else if(!cfg.keepalive){ stopKeepAlive(); }
   if($("gh-edit").style.display!=="none"){   // Zugangsdaten nur übernehmen, wenn der Bereich sichtbar ist
     gh={ owner:$("g-owner").value.trim(), repo:$("g-repo").value.trim(), path:($("g-path").value.trim()||"data"), branch:($("g-branch").value.trim()||"main"), token:$("g-token").value.trim() };
     saveGh(gh);
