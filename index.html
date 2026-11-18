@@ -214,7 +214,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.20";  // Farbige Rahmen raus: Pausensymbol-Balken rot bei Aufzeichnung, Ziel-Zahlen gruen wenn aktiv, Play-Symbol blinkt langsamer (2s)
+const APP_VERSION = "0.2.21";  // Ziel-Farbe nachjustiert: engeres Gruen-Band (0,96-1,04) + Hysterese gegen Flackern; Ziel wird in die JSON gespeichert
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -233,6 +233,7 @@ function loadGoal(){ try{ return JSON.parse(localStorage.getItem("nohrd_goal")||
 function saveGoalLS(g){ try{ g?localStorage.setItem("nohrd_goal",JSON.stringify(g)):localStorage.removeItem("nohrd_goal"); }catch(e){} }
 let goal = loadGoal();
 let goalPhase = 0, goalHit = false;   // 0=aus, 1=aktiv, 2=aktiv+bearbeitet
+let goalColor = "green";              // Hysterese-Zustand der B-Balken-Farbe
 
 // ---------- Laufzeitzustand ----------
 let dev=null, bikeChar=null, resRange=null;
@@ -327,9 +328,19 @@ function goalProgress(){
     if(aFrac>=1) ratio = bGoal>0? bCur/bGoal : 0;
     else if(!isFinite(tRem)) ratio = 0;
     else ratio = bGoal>0? (bCur+rateB*tRem)/bGoal : 0;
-    color = ratio<0.98?"red":(ratio<=1.10?"green":"orange");
-  }
+    color = pickGoalColor(ratio);
+  } else { goalColor="green"; }
   return {aFrac,bFrac,color};
+}
+// Farbe aus der Prognose mit Hysterese (verhindert Flackern an der Schwelle).
+// grün = Ziel wird ~genau erreicht; orange(gelb) = wird übertroffen; rot = unerreichbar.
+function pickGoalColor(r){
+  const RG=0.96, GY=1.04, H=0.03;   // grünes Band 0,96–1,04; 3% Totzone beim Zurückwechseln
+  let c=goalColor;
+  if(c==="orange"){ if(r<GY-H) c=(r<RG?"red":"green"); }
+  else if(c==="red"){ if(r>RG+H) c=(r>GY?"orange":"green"); }
+  else { if(r>GY) c="orange"; else if(r<RG) c="red"; }
+  goalColor=c; return c;
 }
 const PCOL={red:"#d9534f",green:"#4a9d5b",orange:"#ffd633",grey:"#cfccc8"};
 function updateProg(){
@@ -488,7 +499,7 @@ async function attach(d){
 async function start(){
   if(!bikeChar){ return connect(); }
   running=true; paused=false; startedAt=new Date();
-  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null; goalHit=false;
+  elapsed=0; energyKJ=0; roadDist=0; samples=[]; devDist0=null; emaW=null; emaRes=null; emaWpow=null; goalHit=false; goalColor="green";
   requestWake();
   tick=setInterval(step,1000);
   setStatus("Aufzeichnung läuft.","ok"); showRec("rec"); updatePlay();
@@ -576,6 +587,7 @@ function buildJson(){
     started_iso: startedAt? startedAt.toISOString():null, ended_iso:new Date().toISOString(),
     model:{ rider_kg:+cfg.rider, bike_kg:+cfg.bike, cda:+cfg.cda, crr:+cfg.crr, rho:+cfg.rho,
             grade_mode:cfg.grademode, max_grade_pct:+cfg.maxgrade, efficiency:0.97, kcal_method:"power-integral (1kJ≈1kcal)" },
+    goal: goal ? { aMetric:goal.aMetric, aVal:goal.aVal, bMetric:goal.bMetric, bVal:goal.bVal, active:goalPhase>0, reached:goalHit } : null,
     resistance_range: resRange, summary, samples };
 }
 function fnameFrom(d){ d=d||new Date(); const p=x=>String(x).padStart(2,"0");
