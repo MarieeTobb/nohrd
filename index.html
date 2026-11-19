@@ -217,7 +217,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.23";  // Keep-Alive-Versuch: haelt die BLE-Verbindung bei Stillstand per Lese-Anfrage alle 2s aktiv (umschaltbar in Einstellungen), um die Firmware-Abschaltung des Bike-Moduls zu verzoegern
+const APP_VERSION = "0.2.24";  // Vollbild wiederhergestellt (Manifest display:fullscreen); Display bleibt an, solange die App im Vordergrund ist (Wake-Lock nicht mehr nur waehrend der Aufzeichnung)
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -577,7 +577,7 @@ function togglePause(){ if(!running)return; paused=!paused; showRec(paused?"paus
 function stop(){
   if(!running){ setStatus("Nichts aufzuzeichnen."); return; }
   userStopped=true;   // bewusstes Beenden -> keine Auto-Wiederverbindung
-  running=false; clearInterval(tick); releaseWake(); showRec("off"); updatePlay();
+  running=false; clearInterval(tick); showRec("off"); updatePlay();   // Wake-Lock bleibt: Display an, solange App sichtbar
   pendingJson = buildJson();
   const s=pendingJson.summary;
   $("save-sum").textContent = fmtTime(s.duration_s)+" min · "+de(s.road_distance_m/1000,2)+" km · Ø "+de(s.avg_power,0)+" W · "+de(s.kcal,0)+" kcal";
@@ -691,9 +691,12 @@ async function commitProbe(g){
 }
 
 // ---------- Wake Lock / Vollbild ----------
-async function requestWake(){ try{ if("wakeLock" in navigator) wakeLock=await navigator.wakeLock.request("screen"); }catch(e){} }
+async function requestWake(){ try{ if("wakeLock" in navigator && document.visibilityState==="visible" && !wakeLock){ wakeLock=await navigator.wakeLock.request("screen"); wakeLock.addEventListener&&wakeLock.addEventListener("release",()=>{ wakeLock=null; }); } }catch(e){} }
 function releaseWake(){ try{ wakeLock&&wakeLock.release(); wakeLock=null; }catch(e){} }
-document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&running&&!wakeLock) requestWake(); });
+// Display anlassen, solange die App im Vordergrund ist (nicht nur während der Aufzeichnung)
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") requestWake(); });
+document.addEventListener("pointerdown",()=>requestWake(),{passive:true});
+requestWake();
 function toggleFull(){ const d=document.documentElement; if(!document.fullscreenElement){ (d.requestFullscreen||d.webkitRequestFullscreen).call(d); } else { document.exitFullscreen&&document.exitFullscreen(); } }
 
 // ---------- Settings-Dialog ----------

@@ -4,7 +4,7 @@
   "description": "Live-Trainingsanzeige fürs NOHrD-Bike mit Straßengeschwindigkeit, Kalorien und Widerstand.",
   "start_url": ".",
   "scope": ".",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#e9e5e0",
   "theme_color": "#1F3A4D",
