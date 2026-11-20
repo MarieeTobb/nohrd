@@ -38,7 +38,7 @@
   .oval.prog{flex-direction:column;gap:8px;padding:0 26px}
   .pbar{width:100%;height:16px;background:#efeeec;border-radius:8px;overflow:hidden}
   .pfill{height:100%;width:0;border-radius:8px;transition:width .5s ease, background-color .3s}
-  #pfillA{background:#396fa6}
+  #pfillA{background:#82a9d0}
   .sym{justify-content:space-between;padding:0 30px}
   .sym>button{background:none;border:0;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .sym svg{display:block}
@@ -46,6 +46,7 @@
   #b-connect svg circle{fill:#9a9a9a}
   #b-connect.conn svg path{stroke:var(--green)}
   #b-connect.conn svg circle{fill:var(--green)}
+  #b-connect.searching svg{animation:blink .9s steps(1,end) infinite}
   .chips{display:flex;flex-wrap:wrap;gap:8px}
   .chip{padding:7px 12px;border:1px solid #ddd;border-radius:16px;background:#f6f6f6;font-size:13px;color:#333;cursor:pointer;font-family:inherit}
   .chip:active{background:#ececec}
@@ -65,14 +66,16 @@
   dialog button{padding:9px 18px;border:0;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit}
   dialog button.primary{background:var(--accent);color:#fff}
   dialog button.ghost{background:#eee;color:#444}
-  #savedlg{width:440px;max-width:94%;border-radius:18px}
-  #savedlg .dh{font-size:21px;padding:22px 26px}
-  #savedlg .db{padding:22px 26px 6px}
-  #savedlg #save-sum{font-size:19px;color:#111;line-height:1.5}
-  #savedlg .df2{display:flex;flex-direction:column;gap:26px;padding:22px 26px 28px}
-  #savedlg .bigbtn{padding:24px;font-size:22px;font-weight:700;border:0;border-radius:16px;font-family:inherit;cursor:pointer}
-  #savedlg .bigbtn.save{background:#2f8a7a;color:#fff}
-  #savedlg .bigbtn.discard{background:#f0e3e1;color:#b5564e}
+  #savedlg{width:92%;max-width:430px;border:0;border-radius:26px;padding:14px;background:var(--bg);box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  #savedlg::backdrop{background:rgba(0,0,0,.45)}
+  #savedlg .pills{display:flex;flex-direction:column;gap:8px}
+  #savedlg .oval{width:100%;height:64px;background:#fff;border:3px solid var(--line);border-radius:60px;display:flex;align-items:center;justify-content:center;padding:0 16px;overflow:hidden;text-align:center}
+  #savedlg .num{font-size:36px;font-weight:400;color:#2b2b2b;line-height:1}
+  #savedlg .lab{font-size:11.5px;color:var(--grey);font-weight:500;line-height:1;margin-bottom:4px;white-space:nowrap}
+  #savedlg .btn{height:64px;border-radius:60px;display:flex;align-items:center;justify-content:center;gap:11px;font-size:23px;font-weight:500;cursor:pointer;background:#fff;border:3px solid;font-family:inherit}
+  #savedlg .btn.save{border-color:var(--green);color:var(--green)}
+  #savedlg .btn.discard{border-color:#e3b4af;color:var(--red)}
+  #savedlg .svfoot{text-align:center;font-size:11.5px;color:var(--grey);padding:4px 0 0}
   .hint{font-size:11.5px;color:var(--mut);line-height:1.5;margin-top:4px}
   #dbg{font-family:monospace;font-size:11px;color:#555;white-space:pre-wrap;word-break:break-all;background:#f6f4f1;border-radius:8px;padding:10px;margin-top:6px}
   .pill{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:#d11;font-size:26px;line-height:1;display:none;z-index:5}
@@ -188,11 +191,22 @@
 
   <!-- Fahrt beenden -->
   <dialog id="savedlg">
-    <div class="dh">Fahrt beenden</div>
-    <div class="db"><p style="margin:0 0 8px;color:#555;font-size:13px">Zusammenfassung dieser Fahrt:</p><div id="save-sum" style="font-size:16px;color:#111;line-height:1.5"></div></div>
-    <div class="df2">
-      <button class="bigbtn save" id="save-yes">✓ Speichern</button>
-      <button class="bigbtn discard" id="save-no">✕ Verwerfen</button>
+    <div class="pills">
+      <button class="btn save" id="save-yes"><span>✓</span> Speichern</button>
+      <div class="oval"><div class="cols">
+        <div><div class="lab">Dauer</div><div class="num" id="sv-dur">–</div></div>
+        <div><div class="lab">Distanz (km)</div><div class="num" id="sv-dist">–</div></div>
+      </div></div>
+      <div class="oval"><div class="cols">
+        <div><div class="lab">Ø km/h</div><div class="num" id="sv-kmh">–</div></div>
+        <div><div class="lab">Ø Leistung (W)</div><div class="num" id="sv-pow">–</div></div>
+      </div></div>
+      <div class="oval"><div class="cols">
+        <div><div class="lab">Kalorien (kcal)</div><div class="num" id="sv-kcal">–</div></div>
+        <div><div class="lab">Ø Trittfrequenz</div><div class="num" id="sv-cad">–</div></div>
+      </div></div>
+      <button class="btn discard" id="save-no"><span>✕</span> Verwerfen</button>
+      <div class="svfoot" id="sv-foot">Wird in deinem GitHub-Archiv gesichert.</div>
     </div>
   </dialog>
 
@@ -218,7 +232,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.25";  // Ziel 1 (Zahl+Balken) im Uhr-Blau, Ziel 2 gruen; Balken-Prognose (gruen/gelb/rot) bleibt; alle Balkenfarben 15% entsaettigt
+const APP_VERSION = "0.2.26";  // Beenden-Screen im Pill-Design (zentriertes Popup, Speichern oben als gruener Umriss-Pill); Balkenfarben mit 40% Weiss (pastellig); Funk-Button blinkt waehrend der Verbindungssuche, dann gruen
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -348,7 +362,7 @@ function pickGoalColor(r){
   else { if(r>GY) c="orange"; else if(r<RG) c="red"; }
   goalColor=c; return c;
 }
-const PCOL={red:"#cf5d59",green:"#50975f",orange:"#f0cd42",grey:"#ceccc9"};
+const PCOL={red:"#e89895",green:"#92c49d",orange:"#ffe685",grey:"#e2e0de"};
 function updateProg(){
   const fa=$("pfillA"), fb=$("pfillB"); if(!fa) return;
   if(!goal || goalPhase===0){ fa.style.width="0%"; fb.style.width="0%"; fb.style.background=PCOL.grey; return; }
@@ -454,6 +468,7 @@ function onBike(ev){
 // ---------- Verbinden ----------
 async function connect(){
   if(!navigator.bluetooth){ setStatus("Dieser Browser kann kein Web-Bluetooth (nur Chrome auf Android/Windows).","err"); return; }
+  $("b-connect").classList.add("searching");   // blinkt, solange gesucht wird
   try{
     // Schnellverbinden: bereits erlaubtes Gerät direkt nehmen (ohne Auswahl-Dialog)
     let d=null, nGranted=-1, directErr="";
@@ -467,7 +482,7 @@ async function connect(){
     setStatus("Geräteauswahl (gespeichert "+(nGranted<0?"n/v":nGranted)+") …");
     const picked = await navigator.bluetooth.requestDevice({ filters:[{services:[SVC_FTMS]}], optionalServices:[SVC_FTMS] });
     await attach(picked);
-  }catch(e){ setStatus("Verbindung abgebrochen: "+e.message,"err"); }
+  }catch(e){ setStatus("Verbindung abgebrochen: "+e.message,"err"); $("b-connect").classList.remove("searching"); }
 }
 async function tryDirect(d){
   // Schon verbunden? direkt weiter.
@@ -494,7 +509,7 @@ async function gattBind(){
   bikeChar = await fs.getCharacteristic(CH_BIKE);
   await bikeChar.startNotifications();
   bikeChar.addEventListener("characteristicvaluechanged",onBike);
-  connected=true; $("b-connect").classList.add("conn"); updatePlay();
+  connected=true; $("b-connect").classList.remove("searching"); $("b-connect").classList.add("conn"); updatePlay();
   startKeepAlive();
 }
 // Hält die BLE-Verbindung bei Stillstand durch regelmäßige Lese-Anfragen aktiv,
@@ -517,11 +532,12 @@ async function attach(d){
 function onDisconnect(){
   connected=false; bikeChar=null; resChar=null; stopKeepAlive(); last.power=0; last.cadence=0;   // keine Phantom-Werte waehrend der Funklücke
   $("b-connect").classList.remove("conn"); updatePlay(); renderLive();
-  if(userStopped){ setStatus("Verbindung getrennt.","err"); $("b-connect").onclick=connect; return; }
+  if(userStopped){ setStatus("Verbindung getrennt.","err"); $("b-connect").classList.remove("searching"); $("b-connect").onclick=connect; return; }
   autoReconnect();   // selbst-stromversorgtes Bike: beim Antreten kommt das Signal zurueck
 }
 async function autoReconnect(){
   if(reconnecting || !dev) return; reconnecting=true;
+  $("b-connect").classList.add("searching");
   while(!userStopped && dev && !(dev.gatt && dev.gatt.connected)){
     setStatus(running ? "Funk weg – tritt weiter, verbinde neu …" : "Verbindung verloren – verbinde beim Antreten neu …","err");
     try{
@@ -541,6 +557,7 @@ async function autoReconnect(){
       break;
     }catch(e){ await new Promise(r=>setTimeout(r,1500)); }
   }
+  if(!connected) $("b-connect").classList.remove("searching");
   reconnecting=false;
 }
 
@@ -581,7 +598,13 @@ function stop(){
   running=false; clearInterval(tick); showRec("off"); updatePlay();   // Wake-Lock bleibt: Display an, solange App sichtbar
   pendingJson = buildJson();
   const s=pendingJson.summary;
-  $("save-sum").textContent = fmtTime(s.duration_s)+" min · "+de(s.road_distance_m/1000,2)+" km · Ø "+de(s.avg_power,0)+" W · "+de(s.kcal,0)+" kcal";
+  $("sv-dur").textContent = fmtTime(s.duration_s);
+  $("sv-dist").textContent = de(s.road_distance_m/1000,2);
+  $("sv-kmh").textContent = de(s.avg_road_kmh,1);
+  $("sv-pow").textContent = de(s.avg_power,0);
+  $("sv-kcal").textContent = de(s.kcal,0);
+  $("sv-cad").textContent = de(s.avg_cadence,0);
+  $("sv-foot").textContent = ghConfigured() ? "Wird in deinem GitHub-Archiv gesichert." : "GitHub nicht eingerichtet – wird heruntergeladen.";
   $("savedlg").showModal();
 }
 function resetConnectBtn(){ showRec("off"); updatePlay(); }
