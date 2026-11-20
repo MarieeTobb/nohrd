@@ -33,11 +33,12 @@
   .bars i{display:block;width:11px;height:34px;background:#d9534f;border-radius:2px}
   .blink{animation:blink 2s steps(1,end) infinite}
   @keyframes blink{50%{opacity:0}}
-  #goaloval.active .num{color:var(--green)}
+  #goaloval.active #t-goalA{color:var(--blue)}
+  #goaloval.active #t-goalB{color:var(--green)}
   .oval.prog{flex-direction:column;gap:8px;padding:0 26px}
   .pbar{width:100%;height:16px;background:#efeeec;border-radius:8px;overflow:hidden}
   .pfill{height:100%;width:0;border-radius:8px;transition:width .5s ease, background-color .3s}
-  #pfillA{background:#c2bdb6}
+  #pfillA{background:#396fa6}
   .sym{justify-content:space-between;padding:0 30px}
   .sym>button{background:none;border:0;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .sym svg{display:block}
@@ -217,7 +218,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.24";  // Vollbild wiederhergestellt (Manifest display:fullscreen); Display bleibt an, solange die App im Vordergrund ist (Wake-Lock nicht mehr nur waehrend der Aufzeichnung)
+const APP_VERSION = "0.2.25";  // Ziel 1 (Zahl+Balken) im Uhr-Blau, Ziel 2 gruen; Balken-Prognose (gruen/gelb/rot) bleibt; alle Balkenfarben 15% entsaettigt
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -347,7 +348,7 @@ function pickGoalColor(r){
   else { if(r>GY) c="orange"; else if(r<RG) c="red"; }
   goalColor=c; return c;
 }
-const PCOL={red:"#d9534f",green:"#4a9d5b",orange:"#ffd633",grey:"#cfccc8"};
+const PCOL={red:"#cf5d59",green:"#50975f",orange:"#f0cd42",grey:"#ceccc9"};
 function updateProg(){
   const fa=$("pfillA"), fb=$("pfillB"); if(!fa) return;
   if(!goal || goalPhase===0){ fa.style.width="0%"; fb.style.width="0%"; fb.style.background=PCOL.grey; return; }
