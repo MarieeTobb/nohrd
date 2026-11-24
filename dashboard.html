@@ -94,7 +94,7 @@ async function ghApi(cfg, subpath, raw){
 
 const COLS=[
   {t:"Datum / Uhrzeit",l:1},{t:"Tag",l:1},{t:"Dauer"},{t:"Distanz (km)"},
-  {t:"Ø km/h"},{t:"Max km/h"},{t:"Ø Watt"},{t:"Max Watt"},{t:"Ø U/min"},{t:"Max U/min"},{t:"Widerstand"},{t:"kcal"}
+  {t:"Ø km/h"},{t:"Max km/h"},{t:"Ø Watt"},{t:"Max Watt"},{t:"Ø U/min"},{t:"Widerstand"},{t:"kcal/Std"},{t:"kcal"}
 ];
 function rowFrom(j){
   const s=j.summary||{};
@@ -106,9 +106,10 @@ function rowFrom(j){
 }
 function rowCells(r){
   const c=(v,cls="")=>`<td class="${cls}">${v}</td>`;
+  const kcalH = r.min>0 ? r.kcal/(r.min/60) : null;
   return c(r.datum,"l datum")+c(r.tag,"l")+c(fmtMMSS(r.min))+c(fmtKm(r.km))+c(de(r.kmh,2))+c(de(r.maxkmh,2))+
-    c(de(r.avgW,0))+c(de(r.maxW,0))+c(de(r.avgC,0))+c(de(r.maxC,0))+
-    c(r.res!=null?de(r.res,0)+" %":"–")+c(de(r.kcal,0));
+    c(de(r.avgW,0))+c(de(r.maxW,0))+c(de(r.avgC,0))+
+    c(r.res!=null?de(r.res,0)+" %":"–")+c(kcalH!=null?de(kcalH,0):"–")+c(de(r.kcal,0));
 }
 function renderSummary(rows){
   const el=$("sum"); const cut=Date.now()-30*24*3600*1000;
@@ -130,6 +131,10 @@ function renderSummary(rows){
 }
 
 let allFiles=[], loaded={}, windowDays=30, CFG=null;
+const CACHE_KEY="nohrd_dash_cache_v1";
+function loadCache(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||"{}")||{}; }catch(e){ return {}; } }
+function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); }catch(e){} }
+let cache=loadCache();   // { dateiname: { sha, row } } – bereits gelesene Fahrten
 function tsFromName(n){ const m=n.match(/(\d{4}) (\d{2}) (\d{2}) (\d{2})-(\d{2})/); return m? new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`).getTime() : 0; }
 
 async function load(){
@@ -141,8 +146,14 @@ async function load(){
   let files;
   try{ files=await ghApi(CFG, CFG.path, false); }
   catch(e){ setStatus("Fehler: "+e.message,"err"); if(/401|403|404/.test(e.message)) $("tp").style.display="block"; return; }
-  allFiles=(Array.isArray(files)?files:[]).map(f=>f.name).filter(n=>/\.json$/i.test(n) && !/^\.pwa-test/.test(n))
-            .map(n=>({name:n, ts:tsFromName(n)})).sort((a,b)=>b.ts-a.ts);
+  allFiles=(Array.isArray(files)?files:[])
+            .filter(f=>/\.json$/i.test(f.name) && !/^\.pwa-test/.test(f.name))
+            .map(f=>({name:f.name, ts:tsFromName(f.name), sha:f.sha}))
+            .sort((a,b)=>b.ts-a.ts);
+  // Cache aufräumen: Einträge gelöschter Fahrten entfernen
+  const names=new Set(allFiles.map(f=>f.name));
+  for(const k of Object.keys(cache)){ if(!names.has(k)) delete cache[k]; }
+  saveCache();
   loaded={}; windowDays=30;
   if(!allFiles.length){ setStatus("Noch keine Fahrten im Repo.","err"); $("body").innerHTML=""; $("sum").innerHTML=""; $("more").style.display="none"; $("note").textContent=""; return; }
   await render();
@@ -151,12 +162,16 @@ async function load(){
 async function render(){
   const cutoff=Date.now()-windowDays*86400000;
   const visible=allFiles.filter(f=>f.ts>=cutoff);
+  let fetched=0;
   for(const f of visible){
-    if(loaded[f.name]===undefined){
-      setStatus("lädt Fahrten … ("+(visible.filter(x=>loaded[x.name]!==undefined).length)+"/"+visible.length+")");
-      try{ loaded[f.name]=rowFrom(JSON.parse(await ghApi(CFG, CFG.path+"/"+f.name.split("/").map(encodeURIComponent).join("/"), true))); }
-      catch(e){ loaded[f.name]=null; }
-    }
+    if(loaded[f.name]!==undefined) continue;
+    const cx=cache[f.name];
+    if(cx && cx.sha===f.sha){ loaded[f.name]=cx.row; continue; }   // unverändert → aus Cache
+    setStatus("lädt neue/geänderte Fahrten … ("+(++fetched)+")");
+    try{
+      const row=rowFrom(JSON.parse(await ghApi(CFG, CFG.path+"/"+f.name.split("/").map(encodeURIComponent).join("/"), true)));
+      loaded[f.name]=row; cache[f.name]={sha:f.sha, row}; saveCache();
+    }catch(e){ loaded[f.name]=null; }
   }
   const rows=visible.map(f=>loaded[f.name]).filter(Boolean).sort((a,b)=>b.ts-a.ts);
   const fail=visible.filter(f=>loaded[f.name]===null).length;
