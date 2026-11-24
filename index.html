@@ -232,7 +232,7 @@
 
 <script>
 "use strict";
-const APP_VERSION = "0.2.26";  // Beenden-Screen im Pill-Design (zentriertes Popup, Speichern oben als gruener Umriss-Pill); Balkenfarben mit 40% Weiss (pastellig); Funk-Button blinkt waehrend der Verbindungssuche, dann gruen
+const APP_VERSION = "0.2.27";  // resmin/resmax (Widerstands-Skalierung) zusaetzlich im model-Objekt der JSON gespeichert
 
 // ---------- FTMS UUIDs ----------
 const SVC_FTMS   = 0x1826;
@@ -660,7 +660,7 @@ function buildJson(){
   return { exported_by:"nohrd-live", version:APP_VERSION,
     started_iso: startedAt? startedAt.toISOString():null, ended_iso:new Date().toISOString(),
     model:{ rider_kg:+cfg.rider, bike_kg:+cfg.bike, cda:+cfg.cda, crr:+cfg.crr, rho:+cfg.rho,
-            grade_mode:cfg.grademode, max_grade_pct:+cfg.maxgrade, efficiency:0.97, kcal_method:"power-integral (1kJ≈1kcal)" },
+            grade_mode:cfg.grademode, max_grade_pct:+cfg.maxgrade, res_min:+cfg.resmin, res_max:+cfg.resmax, efficiency:0.97, kcal_method:"power-integral (1kJ≈1kcal)" },
     goal: goal ? { aMetric:goal.aMetric, aVal:goal.aVal, bMetric:goal.bMetric, bVal:goal.bVal, active:goalPhase>0, reached:goalHit } : null,
     resistance_range: resRange, summary, samples };
 }
